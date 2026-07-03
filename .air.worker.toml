@@ -1,0 +1,14 @@
+root = "."
+tmp_dir = "tmp/air-worker"
+
+[build]
+cmd = "go build -o ./tmp/air-worker/worker ./cmd/worker"
+bin = "./tmp/air-worker/worker"
+full_bin = "./tmp/air-worker/worker"
+include_ext = ["go", "env"]
+exclude_dir = ["tmp", "vendor", "docs/swagger"]
+delay = 500
+stop_on_error = true
+
+[log]
+time = true

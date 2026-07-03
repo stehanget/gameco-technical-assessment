@@ -1,0 +1,40 @@
+# Local environment overrides
+.env
+.env.*
+!.env.example
+
+# Go build/test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+cover.out
+coverage/
+
+# Binaries
+bin/
+dist/
+
+# Air / local runtime temp files
+tmp/
+*.pid
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+*.iml
+
+# Local database / cache dumps if added later
+*.sqlite
+*.sqlite3
+*.db
+
+# Dependency / tool workdirs
+vendor/

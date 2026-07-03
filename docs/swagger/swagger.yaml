@@ -1,0 +1,438 @@
+basePath: /api/v1
+definitions:
+  auth.LoginRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  auth.MessageEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/auth.MessageResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    type: object
+  auth.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  auth.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  auth.RegisterRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.TokenEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/auth.TokenResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    type: object
+  auth.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+      user:
+        $ref: '#/definitions/auth.UserResponse'
+    type: object
+  auth.UserEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/auth.UserResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    type: object
+  auth.UserResponse:
+    properties:
+      email:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+      public_id:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+    type: object
+  example.CreateRequest:
+    properties:
+      name:
+        maxLength: 255
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  example.EnqueueItemResponse:
+    properties:
+      data:
+        $ref: '#/definitions/example.EnqueueResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    type: object
+  example.EnqueueResponse:
+    properties:
+      id:
+        type: string
+      queue:
+        type: string
+      state:
+        type: string
+      type:
+        type: string
+    type: object
+  example.ItemResponse:
+    properties:
+      data:
+        $ref: '#/definitions/example.Response'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    type: object
+  example.ListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/example.Response'
+        type: array
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    type: object
+  example.Response:
+    properties:
+      name:
+        type: string
+      public_id:
+        type: string
+    type: object
+  health.StatusResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  httpx.ErrorResponse:
+    properties:
+      message:
+        type: string
+      request_id:
+        type: string
+      success:
+        type: boolean
+    type: object
+  httpx.Meta:
+    properties:
+      request_id:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Gameco marketplace backend technical assessment API with Gin, GORM,
+    Goose, JWT + Redis, and Swagger.
+  title: gameco-technical-assessment API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns an access token plus refresh token
+      parameters:
+      - description: Login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.TokenEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revokes a refresh token session
+      parameters:
+      - description: Logout payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns the authenticated user profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.UserEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a refresh token for a new access token and refresh token
+      parameters:
+      - description: Refresh payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.TokenEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Refresh tokens
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user and returns an access token plus refresh token
+      parameters:
+      - description: Register payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.TokenEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Register user
+      tags:
+      - auth
+  /examples:
+    get:
+      description: Returns example records from the boilerplate module
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/example.ListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: List examples
+      tags:
+      - examples
+    post:
+      consumes:
+      - application/json
+      description: Creates a sample resource to demonstrate the module pattern
+      parameters:
+      - description: Example payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/example.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/example.ItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Create example
+      tags:
+      - examples
+  /examples/async:
+    post:
+      consumes:
+      - application/json
+      description: Pushes example creation into the Redis-backed worker queue
+      parameters:
+      - description: Example payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/example.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/example.EnqueueItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Enqueue example creation
+      tags:
+      - examples
+  /health:
+    get:
+      description: Returns liveness status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.StatusResponse'
+      summary: Health check
+      tags:
+      - health
+  /ready:
+    get:
+      description: Returns readiness status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.StatusResponse'
+      summary: Readiness check
+      tags:
+      - health
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Authentication, session lifecycle, and current-user authorization context.
+  name: auth
+- description: Development-only example endpoints used to validate the backend module
+    foundation.
+  name: examples
+- description: Liveness and readiness endpoints for runtime health checks.
+  name: health
