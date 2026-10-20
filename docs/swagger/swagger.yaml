@@ -406,19 +406,6 @@ paths:
       summary: Health check
       tags:
       - health
-  /ready:
-    get:
-      description: Returns readiness status
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/health.StatusResponse'
-      summary: Readiness check
-      tags:
-      - health
 schemes:
 - http
 - https
@@ -434,5 +421,5 @@ tags:
 - description: Development-only example endpoints used to validate the backend module
     foundation.
   name: examples
-- description: Liveness and readiness endpoints for runtime health checks.
+- description: Liveness endpoint for runtime health checks.
   name: health

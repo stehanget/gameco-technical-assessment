@@ -14,7 +14,7 @@
 // @tag.name examples
 // @tag.description Development-only example endpoints used to validate the backend module foundation.
 // @tag.name health
-// @tag.description Liveness and readiness endpoints for runtime health checks.
+// @tag.description Liveness endpoint for runtime health checks.
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

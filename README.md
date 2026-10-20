@@ -5,7 +5,8 @@ A generic Go backend boilerplate for building SaaS-style APIs with:
 - Gin
 - GORM
 - Goose
-- JWT access token + Redis refresh session
+- JWT access token + PostgreSQL-backed authentication sessions
+- Redis-backed rate limiting and background-job support
 - User roles with domain-specific permission capabilities
 - Swagger / OpenAPI docs
 - Docker-first local development
@@ -20,7 +21,7 @@ This repo is meant to be a **starter that people can actually understand**, not 
 ### Runtime and infrastructure
 - HTTP API with Gin
 - PostgreSQL for transactional data
-- Redis for refresh sessions
+- Redis for rate limiting, cache/support operations, and background jobs
 - Goose SQL migrations
 - Structured logging with `slog`
 - Swagger docs route
@@ -30,7 +31,7 @@ This repo is meant to be a **starter that people can actually understand**, not 
 ### Product foundation
 - User registration and login
 - JWT access token
-- Refresh token rotation
+- Refresh token rotation with database-backed session revocation
 - Logout / refresh session revoke
 - Seeded `user@mail.com` with buyer + seller roles
 - Default-deny permission middleware
@@ -42,7 +43,7 @@ This repo is meant to be a **starter that people can actually understand**, not 
 - `gofumpt` + `goimports` formatting workflow
 - `golangci-lint` lint workflow
 - optional Git pre-commit hook
-- worker-ready async example route backed by Redis queue
+- worker-ready async job foundation backed by Redis queue
 
 ---
 
@@ -157,44 +158,67 @@ make install-hooks
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/auth/me`
 
-### Example
-- `GET /api/v1/examples`
-- `POST /api/v1/examples`
-- `POST /api/v1/examples/async`
+### Health
+- `GET /api/v1/health`
+
+The `internal/modules/example` package remains as reference scaffolding, but it is not registered in the application router.
 
 ## Project structure
 
 ```text
-cmd/                    # executable entrypoints
-  api/
-  worker/
-  migrate/
+cmd/                         # executable entrypoints
+  api/                       # HTTP API server and Swagger metadata
+  migrate/                   # Goose migration runner
+  seed/                      # modular database seeder runner
+  worker/                    # background worker process
 internal/
-  app/                  # bootstrap, router, wiring
-  config/               # env/config loading and validation
-  modules/              # product modules
+  app/                       # bootstrap, router, dependency wiring
+  config/                    # environment/config loading and validation
+  constants/                 # shared role and permission catalogs
+    permission/
+    role/
+  modules/                   # feature modules and route ownership
     auth/
     health/
-    example/
-  platform/             # infra integrations (db, auth, cache, middleware)
-  workers/              # background job code
-migrations/             # Goose SQL migrations
-deployments/            # Docker and runtime assets
-docs/                   # human-facing project documentation
+    example/                 # reference scaffolding; not registered in routes
+  platform/                  # infrastructure integrations
+    auth/                    # JWT, password hashing, refresh tokens
+    cache/                   # Redis client
+    database/                # PostgreSQL/GORM and Goose helpers
+    httpx/                   # shared HTTP response helpers
+    identifier/              # UUIDv7 public identifier generation
+    logger/                  # structured logging
+    middleware/              # auth, rate limiting, request ID, recovery
+  seeds/                     # modular, idempotent seeders
+  workers/                   # background jobs and queue processing
+migrations/                  # Goose SQL migrations
+tests/
+  e2e/                       # cross-module HTTP end-to-end tests
+deployments/
+  compose/                   # production/development Compose files
+  docker/                    # API, worker, migrate, and dev Dockerfiles
+docs/
+  swagger/                   # generated OpenAPI artifacts
+  schema.dbml                # database schema documentation
+  *.md                       # human-facing project documentation
+scripts/                     # repository helper scripts
 ```
 
 ---
 
 ## Documentation map
 
-- `docs/getting-started.md` — first successful local boot for beginners
-- `docs/windows-guide.md` — recommended Windows + WSL2 setup path
-- `docs/docker-development-guide.md` — day-to-day Docker-first development reference
-- `docs/editor-setup.md` — VS Code / IDE setup for format-on-save and linting
-- `docs/pre-commit-guide.md` — how to install and use the Git pre-commit hook
-- `docs/module-template.md` — single guide for adding a new module/feature properly
-- `docs/migrations-guide.md` — how to create, write, run, and review migrations
-- `docs/testing-guide.md` — how to run and add tests in this repo
+- [Getting started](docs/getting-started.md) — first successful local boot for beginners
+- [Windows guide](docs/windows-guide.md) — recommended Windows + WSL2 setup path
+- [Docker development guide](docs/docker-development-guide.md) — day-to-day Docker-first development reference
+- [Editor setup](docs/editor-setup.md) — VS Code / IDE setup for format-on-save and linting
+- [Pre-commit guide](docs/pre-commit-guide.md) — how to install and use the Git pre-commit hook
+- [Module template](docs/module-template.md) — guide for adding a new module/feature properly
+- [Migrations guide](docs/migrations-guide.md) — how to create, write, run, and review migrations
+- [Testing guide](docs/testing-guide.md) — how to run and add tests in this repo
+- [Identifier conventions](docs/identifier-conventions.md) — internal IDs, public UUIDv7 identifiers, JWT JTI, and refresh-token storage
+- [Database schema](docs/schema.dbml) — current auth schema and planned marketplace domain model
+- [Technical assessment](docs/technical-assessment.md) — original marketplace technical-assessment requirements
 
 ---
 

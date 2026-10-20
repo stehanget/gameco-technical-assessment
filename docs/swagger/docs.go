@@ -359,26 +359,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/ready": {
-            "get": {
-                "description": "Returns readiness status",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "health"
-                ],
-                "summary": "Readiness check",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/health.StatusResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -667,7 +647,7 @@ const docTemplate = `{
             "name": "examples"
         },
         {
-            "description": "Liveness and readiness endpoints for runtime health checks.",
+            "description": "Liveness endpoint for runtime health checks.",
             "name": "health"
         }
     ]
