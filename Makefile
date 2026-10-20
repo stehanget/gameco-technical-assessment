@@ -39,7 +39,7 @@ test:
 	$(GO) test ./...
 
 test-e2e:
-	$(GO) test ./internal/app -count=1
+	$(GO) test ./tests/e2e -count=1
 
 lint:
 	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
@@ -82,7 +82,7 @@ docker-test:
 	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go test ./...'
 
 docker-test-e2e:
-	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go test ./internal/app -count=1'
+	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go test ./tests/e2e -count=1'
 
 docker-fmt:
 	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go run mvdan.cc/gofumpt@latest -w . && go run golang.org/x/tools/cmd/goimports@latest -w .'
