@@ -57,10 +57,6 @@ Important fields:
 - `REDIS_*`
 - `APP_ACCESS_TOKEN_TTL`
 - `APP_REFRESH_TOKEN_TTL`
-- `RATE_LIMIT_ENABLED`
-- `RATE_LIMIT_REQUESTS`
-- `RATE_LIMIT_WINDOW`
-
 ---
 
 ## 4. Start the full dev stack with live reload

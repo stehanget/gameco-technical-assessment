@@ -218,6 +218,8 @@ scripts/                     # repository helper scripts
 - [Testing guide](docs/testing-guide.md) — how to run and add tests in this repo
 - [Identifier conventions](docs/identifier-conventions.md) — internal IDs, public UUIDv7 identifiers, JWT JTI, and refresh-token storage
 - [Database schema](docs/schema.dbml) — current auth schema and planned marketplace domain model
+- [Threat model](docs/THREAT-MODEL.md) — OWASP API risks, attack scenarios, mitigations, and residual risks
+- [Architecture decisions](docs/ADR/README.md) — accepted session, data model, stock concurrency, rate-limit, and CORS decisions
 - [Technical assessment](docs/technical-assessment.md) — original marketplace technical-assessment requirements
 
 ---

@@ -1,0 +1,6 @@
+# Architecture Decision Records
+
+- [ADR-0001: First-party session strategy](0001-session-strategy.md)
+- [ADR-0002: Atomic stock reservation during checkout](0002-stock-concurrency.md)
+- [ADR-0003: PostgreSQL data model and public identifiers](0003-database-and-identifier-model.md)
+- [ADR-0004: Shared rate limiting and explicit CORS](0004-distributed-abuse-controls.md)

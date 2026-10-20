@@ -10,9 +10,9 @@
         "contact": {},
         "version": "1.0"
     },
-    "basePath": "/api/v1",
+    "basePath": "/",
     "paths": {
-        "/auth/login": {
+        "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns an access token plus refresh token",
                 "consumes": [
@@ -58,7 +58,7 @@
                 }
             }
         },
-        "/auth/logout": {
+        "/api/v1/auth/logout": {
             "post": {
                 "description": "Revokes a refresh token session",
                 "consumes": [
@@ -98,7 +98,7 @@
                 }
             }
         },
-        "/auth/me": {
+        "/api/v1/auth/me": {
             "get": {
                 "security": [
                     {
@@ -135,7 +135,7 @@
                 }
             }
         },
-        "/auth/refresh": {
+        "/api/v1/auth/refresh": {
             "post": {
                 "description": "Exchanges a refresh token for a new access token and refresh token",
                 "consumes": [
@@ -181,7 +181,7 @@
                 }
             }
         },
-        "/auth/register": {
+        "/api/v1/auth/register": {
             "post": {
                 "description": "Creates a user and returns an access token plus refresh token",
                 "consumes": [
@@ -221,7 +221,7 @@
                 }
             }
         },
-        "/examples": {
+        "/api/v1/examples": {
             "get": {
                 "description": "Returns example records from the boilerplate module",
                 "produces": [
@@ -291,7 +291,7 @@
                 }
             }
         },
-        "/examples/async": {
+        "/api/v1/examples/async": {
             "post": {
                 "description": "Pushes example creation into the Redis-backed worker queue",
                 "consumes": [

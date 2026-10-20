@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   auth.LoginRequest:
     properties:
@@ -182,7 +182,7 @@ info:
   title: gameco-technical-assessment API
   version: "1.0"
 paths:
-  /auth/login:
+  /api/v1/auth/login:
     post:
       consumes:
       - application/json
@@ -212,7 +212,7 @@ paths:
       summary: Login
       tags:
       - auth
-  /auth/logout:
+  /api/v1/auth/logout:
     post:
       consumes:
       - application/json
@@ -238,7 +238,7 @@ paths:
       summary: Logout
       tags:
       - auth
-  /auth/me:
+  /api/v1/auth/me:
     get:
       description: Returns the authenticated user profile
       produces:
@@ -261,7 +261,7 @@ paths:
       summary: Current user
       tags:
       - auth
-  /auth/refresh:
+  /api/v1/auth/refresh:
     post:
       consumes:
       - application/json
@@ -291,7 +291,7 @@ paths:
       summary: Refresh tokens
       tags:
       - auth
-  /auth/register:
+  /api/v1/auth/register:
     post:
       consumes:
       - application/json
@@ -317,7 +317,7 @@ paths:
       summary: Register user
       tags:
       - auth
-  /examples:
+  /api/v1/examples:
     get:
       description: Returns example records from the boilerplate module
       produces:
@@ -363,7 +363,7 @@ paths:
       summary: Create example
       tags:
       - examples
-  /examples/async:
+  /api/v1/examples/async:
     post:
       consumes:
       - application/json

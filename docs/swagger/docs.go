@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/login": {
+        "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns an access token plus refresh token",
                 "consumes": [
@@ -61,7 +61,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/logout": {
+        "/api/v1/auth/logout": {
             "post": {
                 "description": "Revokes a refresh token session",
                 "consumes": [
@@ -101,7 +101,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/me": {
+        "/api/v1/auth/me": {
             "get": {
                 "security": [
                     {
@@ -138,7 +138,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/refresh": {
+        "/api/v1/auth/refresh": {
             "post": {
                 "description": "Exchanges a refresh token for a new access token and refresh token",
                 "consumes": [
@@ -184,7 +184,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register": {
+        "/api/v1/auth/register": {
             "post": {
                 "description": "Creates a user and returns an access token plus refresh token",
                 "consumes": [
@@ -224,7 +224,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/examples": {
+        "/api/v1/examples": {
             "get": {
                 "description": "Returns example records from the boilerplate module",
                 "produces": [
@@ -294,7 +294,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/examples/async": {
+        "/api/v1/examples/async": {
             "post": {
                 "description": "Pushes example creation into the Redis-backed worker queue",
                 "consumes": [
@@ -657,7 +657,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api/v1",
+	BasePath:         "/",
 	Schemes:          []string{"http", "https"},
 	Title:            "gameco-technical-assessment API",
 	Description:      "Gameco marketplace backend technical assessment API with Gin, GORM, Goose, JWT + Redis, and Swagger.",
