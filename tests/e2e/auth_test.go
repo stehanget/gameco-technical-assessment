@@ -14,6 +14,7 @@ import (
 	app "gameco-technical-assessment/internal/app"
 	"gameco-technical-assessment/internal/config"
 	authmodule "gameco-technical-assessment/internal/modules/auth"
+	catalogmodule "gameco-technical-assessment/internal/modules/catalog"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/seeds"
 
@@ -38,6 +39,8 @@ func TestAuthRegisterLoginThenMe(t *testing.T) {
 		&authmodule.RolePermission{},
 		&authmodule.UserRole{},
 		&authmodule.AuthSession{},
+		&catalogmodule.Category{},
+		&catalogmodule.Product{},
 	); err != nil {
 		t.Fatalf("migrate sqlite database: %v", err)
 	}

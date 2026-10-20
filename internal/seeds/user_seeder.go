@@ -19,7 +19,7 @@ type userSeedRecord struct {
 type UserSeeder struct{}
 
 var userSeedRecords = []userSeedRecord{
-	{Email: "user@mail.com", Password: "admin123"},
+	{Email: bootstrapDemoUserEmail, Password: "admin123"},
 }
 
 func NewUserSeeder() UserSeeder { return UserSeeder{} }

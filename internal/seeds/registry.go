@@ -7,5 +7,7 @@ func defaultSeeders() []Seeder {
 		NewRolePermissionSeeder(),
 		NewUserSeeder(),
 		NewUserRoleSeeder(),
+		NewCategorySeeder(),
+		NewProductSeeder(),
 	}
 }
