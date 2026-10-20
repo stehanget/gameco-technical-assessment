@@ -28,6 +28,7 @@ Good for:
 
 Examples in this repo:
 - `internal/platform/auth/..._test.go`
+- `internal/platform/middleware/rate_limit_test.go`
 
 
 ### End-to-end-ish router tests
@@ -271,8 +272,8 @@ For this repo, real-flow tests are often more useful than heavy mocks.
 ### Writing giant unreadable tests
 Prefer small scenario-based tests over one monster test doing 20 unrelated things.
 
-### Forgetting token refresh after role change
-Remember: JWT scopes are embedded in the token. If role/permission changes, login or refresh again before testing new access.
+### Forgetting session refresh after role change
+Roles and permissions are resolved from the active database-backed auth session, not embedded in the JWT claims. After changing role or permission assignments, use a newly issued or refreshed session before testing access again.
 
 ### Running only `go test` and skipping format/lint
 That misses style/import/lint issues. Use the full check when finishing work.

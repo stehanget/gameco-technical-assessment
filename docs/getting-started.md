@@ -57,6 +57,9 @@ Important fields:
 - `REDIS_*`
 - `APP_ACCESS_TOKEN_TTL`
 - `APP_REFRESH_TOKEN_TTL`
+- `RATE_LIMIT_ENABLED`
+- `RATE_LIMIT_REQUESTS`
+- `RATE_LIMIT_WINDOW`
 
 ---
 
@@ -220,6 +223,7 @@ If you want to understand the repo quickly, read these in order:
 2. `docs/getting-started.md`
 3. `docs/docker-development-guide.md`
 4. `internal/app/router.go`
-5. `internal/modules/auth/`
-6. `internal/modules/example/`
-7. `docs/module-template.md`
+5. `internal/config/`
+6. `internal/constants/`
+7. `internal/modules/auth/`
+8. `docs/module-template.md`

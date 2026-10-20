@@ -9,6 +9,13 @@ The repository uses two identifier layers:
 
 Use stable role and permission `code` values for access-control catalogs. Relation tables do not need their own public identifiers.
 
+The shared catalog constants live under:
+
+```text
+internal/constants/permission/codes.go
+internal/constants/role/codes.go
+```
+
 Authentication uses the same split:
 
 - `auth_sessions.id` remains an internal BIGINT.

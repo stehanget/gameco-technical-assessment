@@ -1,6 +1,6 @@
 # Migration Guide
 
-This guide explains how to create, write, run, and review database migrations in this boilerplate.
+This guide explains how to create, write, run, and review database migrations in this repository.
 
 If you are new to backend work, read this before touching anything inside `migrations/`.
 
@@ -31,10 +31,9 @@ migrations/
 ```
 
 Current examples:
-- `20260701090000_create_examples.sql`
 - `20260701090500_create_users.sql`
-- `20260701091000_create_tenant_rbac.sql`
-- `20260701091500_make_users_global.sql`
+- `20260701091000_create_access_control.sql`
+- `20260723120500_create_auth_sessions.sql`
 
 ---
 
@@ -84,7 +83,6 @@ DROP TABLE ...;
 -- +goose Up
 CREATE TABLE IF NOT EXISTS projects (
     id BIGSERIAL PRIMARY KEY,
-    tenant_id VARCHAR(64) NOT NULL,
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -335,7 +333,6 @@ make test
 -- +goose Up
 CREATE TABLE IF NOT EXISTS projects (
     id BIGSERIAL PRIMARY KEY,
-    tenant_id VARCHAR(64) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -362,10 +359,10 @@ DROP COLUMN IF EXISTS status;
 
 ```sql
 -- +goose Up
-CREATE INDEX IF NOT EXISTS idx_projects_tenant_id ON projects(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
 
 -- +goose Down
-DROP INDEX IF EXISTS idx_projects_tenant_id;
+DROP INDEX IF EXISTS idx_projects_name;
 ```
 
 ### Backfill existing data
