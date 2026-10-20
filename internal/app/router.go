@@ -17,6 +17,9 @@ func NewRouter(container *Container) *gin.Engine {
 	}
 
 	router := gin.New()
+	if err := router.SetTrustedProxies(nil); err != nil {
+		panic(err)
+	}
 	router.Use(middleware.RequestID())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Recovery(container.Logger))

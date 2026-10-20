@@ -72,7 +72,7 @@ Stable public error codes and default client-facing messages are maintained toge
 
 - Never return `err.Error()` for unknown or infrastructure errors.
 - Never return stack traces, SQL, framework details, credentials, tokens, or unrelated PII.
-- Log the original error server-side with the request ID and structured context.
+- Log safe structured error metadata server-side with the request ID; do not emit raw error causes by default.
 - Preserve the request ID in the response header and error body when available.
 - Do not log passwords, access tokens, refresh tokens, signing secrets, webhook secrets, or payment-card data.
 - Panic recovery must use the same safe 500 error envelope as ordinary internal failures.
@@ -106,7 +106,7 @@ Implemented foundation:
 
 - `internal/platform/httpx/response.go` provides shared success/error envelopes and the single `HandleError` entry point.
 - `internal/platform/middleware/request_id.go` generates or propagates request IDs.
-- `internal/platform/middleware/logging.go` includes request IDs in structured logs.
+- `internal/platform/middleware/logging.go` emits structured request logs with request IDs, route templates, numeric duration, status-based levels, and typed error metadata.
 - `internal/platform/middleware/recovery.go` converts panics into a safe 500 response through `HandleError`.
 
 Remaining implementation work:

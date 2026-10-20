@@ -35,7 +35,7 @@ func Bootstrap(ctx context.Context) (*Container, error) {
 		return nil, err
 	}
 
-	appLogger := logger.New(cfg.App.Env)
+	appLogger := logger.New(cfg.App.Name, cfg.App.Env)
 
 	db, err := database.NewGORM(cfg)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func New(env string) *slog.Logger {
+func New(name, env string) *slog.Logger {
 	level := slog.LevelInfo
 	if env == "development" {
 		level = slog.LevelDebug
@@ -15,5 +15,8 @@ func New(env string) *slog.Logger {
 	}
 
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
-	return slog.New(handler)
+	return slog.New(handler).With(
+		"service", name,
+		"environment", env,
+	)
 }
