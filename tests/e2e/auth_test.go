@@ -98,12 +98,31 @@ func TestAuthRegisterLoginThenMe(t *testing.T) {
 	if err := json.Unmarshal(loginResponse.Body.Bytes(), &loginPayload); err != nil {
 		t.Fatalf("decode login response: %v", err)
 	}
-	if !loginPayload.Success || loginPayload.Data.AccessToken == "" {
+	if !loginPayload.Success || loginPayload.Data.AccessToken == "" || loginPayload.Data.RefreshToken == "" {
 		t.Fatalf("login: expected successful token response, got %+v", loginPayload)
 	}
 
+	refreshBody, err := json.Marshal(map[string]string{"refresh_token": loginPayload.Data.RefreshToken})
+	if err != nil {
+		t.Fatalf("encode refresh request: %v", err)
+	}
+	refreshRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", bytes.NewReader(refreshBody))
+	refreshRequest.Header.Set("Content-Type", "application/json")
+	refreshResponse := httptest.NewRecorder()
+	router.ServeHTTP(refreshResponse, refreshRequest)
+	if refreshResponse.Code != http.StatusOK {
+		t.Fatalf("refresh: expected status 200, got %d: %s", refreshResponse.Code, refreshResponse.Body.String())
+	}
+	var refreshPayload authTokenEnvelope
+	if err := json.Unmarshal(refreshResponse.Body.Bytes(), &refreshPayload); err != nil {
+		t.Fatalf("decode refresh response: %v", err)
+	}
+	if refreshPayload.Data.AccessToken == "" || refreshPayload.Data.RefreshToken == "" {
+		t.Fatalf("refresh: expected rotated token pair, got %+v", refreshPayload)
+	}
+
 	meRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
-	meRequest.Header.Set("Authorization", "Bearer "+loginPayload.Data.AccessToken)
+	meRequest.Header.Set("Authorization", "Bearer "+refreshPayload.Data.AccessToken)
 	meResponse := httptest.NewRecorder()
 	router.ServeHTTP(meResponse, meRequest)
 
@@ -124,12 +143,21 @@ func TestAuthRegisterLoginThenMe(t *testing.T) {
 	if !contains(mePayload.Data.Roles, "buyer") || !contains(mePayload.Data.Roles, "seller") {
 		t.Fatalf("me: expected buyer and seller roles, got %v", mePayload.Data.Roles)
 	}
+
+	reusedRefreshRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", bytes.NewReader(refreshBody))
+	reusedRefreshRequest.Header.Set("Content-Type", "application/json")
+	reusedRefreshResponse := httptest.NewRecorder()
+	router.ServeHTTP(reusedRefreshResponse, reusedRefreshRequest)
+	if reusedRefreshResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("reused refresh: expected status 401, got %d: %s", reusedRefreshResponse.Code, reusedRefreshResponse.Body.String())
+	}
 }
 
 type authTokenEnvelope struct {
 	Success bool `json:"success"`
 	Data    struct {
-		AccessToken string `json:"access_token"`
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
 	} `json:"data"`
 }
 

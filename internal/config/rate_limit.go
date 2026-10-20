@@ -8,37 +8,25 @@ type RateLimitPolicyConfig struct {
 }
 
 type RateLimitConfig struct {
-	Enabled bool
-	Default RateLimitPolicyConfig
+	Enabled       bool
+	Anonymous     RateLimitPolicyConfig
+	Authenticated RateLimitPolicyConfig
 }
 
-func loadRateLimitConfig() (RateLimitConfig, error) {
-	enabled, err := getEnvBool("RATE_LIMIT_ENABLED", true)
-	if err != nil {
-		return RateLimitConfig{}, err
-	}
-
-	defaultPolicy, err := loadRateLimitPolicy("RATE_LIMIT", 120, time.Minute)
-	if err != nil {
-		return RateLimitConfig{}, err
-	}
-
+func loadRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
-		Enabled: enabled,
-		Default: defaultPolicy,
-	}, nil
-}
-
-func loadRateLimitPolicy(prefix string, defaultLimit int, defaultWindow time.Duration) (RateLimitPolicyConfig, error) {
-	limit, err := getEnvInt(prefix+"_REQUESTS", defaultLimit)
-	if err != nil {
-		return RateLimitPolicyConfig{}, err
+		Enabled: true,
+		// Anonymous traffic is more abuse-prone because it has no account-level identity.
+		// Keep the global IP budget conservative; sensitive public routes define tighter policies.
+		Anonymous: RateLimitPolicyConfig{
+			Limit:  60,
+			Window: time.Minute,
+		},
+		// Authenticated users share one budget across their devices and access tokens.
+		// This leaves room for normal SPA/mobile activity without using a session bucket.
+		Authenticated: RateLimitPolicyConfig{
+			Limit:  300,
+			Window: time.Minute,
+		},
 	}
-
-	window, err := getEnvDuration(prefix+"_WINDOW", defaultWindow)
-	if err != nil {
-		return RateLimitPolicyConfig{}, err
-	}
-
-	return RateLimitPolicyConfig{Limit: limit, Window: window}, nil
 }

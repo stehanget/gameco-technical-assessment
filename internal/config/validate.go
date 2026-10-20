@@ -32,8 +32,11 @@ func (c Config) Validate() error {
 	}
 
 	if c.RateLimit.Enabled {
-		if c.RateLimit.Default.Limit <= 0 || c.RateLimit.Default.Window <= 0 {
-			return fmt.Errorf("default rate limit limit and window must be greater than zero")
+		if c.RateLimit.Anonymous.Limit <= 0 || c.RateLimit.Anonymous.Window <= 0 {
+			return fmt.Errorf("anonymous rate limit limit and window must be greater than zero")
+		}
+		if c.RateLimit.Authenticated.Limit <= 0 || c.RateLimit.Authenticated.Window <= 0 {
+			return fmt.Errorf("authenticated rate limit limit and window must be greater than zero")
 		}
 	}
 

@@ -23,7 +23,7 @@ func NewHandler(service *Service) *Handler {
 // @Produce json
 // @Success 200 {object} ListResponse
 // @Failure 500 {object} httpx.ErrorResponse
-// @Router /examples [get]
+// @Router /api/v1/examples [get]
 func (h *Handler) List(c *gin.Context) {
 	items, err := h.service.List()
 	if err != nil {
@@ -44,7 +44,7 @@ func (h *Handler) List(c *gin.Context) {
 // @Success 201 {object} ItemResponse
 // @Failure 400 {object} httpx.ErrorResponse
 // @Failure 500 {object} httpx.ErrorResponse
-// @Router /examples [post]
+// @Router /api/v1/examples [post]
 func (h *Handler) Create(c *gin.Context) {
 	var request CreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -71,7 +71,7 @@ func (h *Handler) Create(c *gin.Context) {
 // @Success 202 {object} EnqueueItemResponse
 // @Failure 400 {object} httpx.ErrorResponse
 // @Failure 500 {object} httpx.ErrorResponse
-// @Router /examples/async [post]
+// @Router /api/v1/examples/async [post]
 func (h *Handler) EnqueueCreate(c *gin.Context) {
 	var request CreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {

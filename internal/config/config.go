@@ -18,15 +18,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	rateLimitConfig, err := loadRateLimitConfig()
-	if err != nil {
-		return Config{}, err
-	}
-
 	return Config{
 		App:       appConfig,
 		Postgres:  loadPostgresConfig(),
 		Redis:     redisConfig,
-		RateLimit: rateLimitConfig,
+		RateLimit: loadRateLimitConfig(),
 	}, nil
 }

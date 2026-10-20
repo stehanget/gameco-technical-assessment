@@ -84,7 +84,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 	session, err := s.repository.FindActiveSessionByRefreshHash(ctx, refreshHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return TokenResponse{}, fmt.Errorf("invalid or reused refresh token")
+			return TokenResponse{}, s.repository.HandleRefreshTokenReuse(ctx, refreshHash)
 		}
 		return TokenResponse{}, err
 	}
@@ -92,14 +92,41 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 	if err != nil {
 		return TokenResponse{}, err
 	}
-	now := time.Now()
-	session.RevokedAt = &now
-	session.LastUsedAt = &now
-	if err := s.repository.UpdateSession(ctx, session); err != nil {
+	access, err := s.repository.Access(ctx, user.ID)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	jtiID, err := identifier.NewPublicID()
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	jti := jtiID.String()
+	accessToken, err := s.jwtManager.GenerateAccessToken(fmt.Sprintf("%d", user.ID), jti, s.config.AccessTokenTTL)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	newRefreshToken, err := platformauth.GenerateRefreshToken()
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	newRefreshHash := platformauth.HashToken(newRefreshToken)
+	replacement := AuthSession{
+		JTI: jti, RefreshHash: newRefreshHash,
+		Roles: access.Roles, Permissions: access.Permissions,
+		UserAgent: metadata.UserAgent, IPAddress: metadata.IPAddress,
+		ExpiresAt: time.Now().Add(s.config.RefreshTokenTTL),
+	}
+	if _, err := s.repository.RotateRefreshSession(ctx, refreshHash, replacement); err != nil {
+		if errors.Is(err, ErrRefreshTokenReuse) {
+			return TokenResponse{}, ErrRefreshTokenReuse
+		}
 		return TokenResponse{}, err
 	}
 	_ = s.redis.Del(ctx, s.refreshSessionKey(refreshHash)).Err()
-	return s.issueTokenPair(ctx, user, metadata)
+	if err := s.redis.Set(ctx, s.refreshSessionKey(newRefreshHash), jti, s.config.RefreshTokenTTL).Err(); err != nil {
+		return TokenResponse{}, err
+	}
+	return TokenResponse{AccessToken: accessToken, RefreshToken: newRefreshToken, TokenType: "Bearer", ExpiresIn: int64(s.config.AccessTokenTTL.Seconds()), User: mapUser(user, access)}, nil
 }
 
 func (s *Service) Logout(ctx context.Context, refreshToken string) error {

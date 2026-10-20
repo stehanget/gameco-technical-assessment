@@ -5,7 +5,10 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	platformauth "gameco-technical-assessment/internal/platform/auth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -21,19 +24,52 @@ return {count, ttl}
 `
 
 type RateLimitPolicy struct {
-	Name   string
-	Limit  int
-	Window time.Duration
+	Name    string
+	Limit   int
+	Window  time.Duration
+	KeyFunc func(*gin.Context) string
 }
 
-func RateLimit(client redis.UniversalClient, policy RateLimitPolicy) gin.HandlerFunc {
+type RateLimitPolicySet struct {
+	Anonymous     RateLimitPolicy
+	Authenticated RateLimitPolicy
+}
+
+func RateLimit(client redis.UniversalClient, policies RateLimitPolicySet, jwtManager *platformauth.JWTManager) gin.HandlerFunc {
+	return rateLimitHandler(client, func(c *gin.Context) RateLimitPolicy {
+		if jwtManager != nil {
+			if token := bearerToken(c); token != "" {
+				claims, err := jwtManager.ParseAccessToken(token)
+				if err == nil && claims.UserID != "" {
+					policy := policies.Authenticated
+					if policy.KeyFunc == nil {
+						policy.KeyFunc = func(*gin.Context) string { return "user:" + claims.UserID }
+					}
+					return policy
+				}
+			}
+		}
+		return policies.Anonymous
+	})
+}
+
+func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Context) RateLimitPolicy) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		policy := selectPolicy(c)
 		if client == nil || policy.Limit <= 0 || policy.Window <= 0 {
 			c.Next()
 			return
 		}
 
-		key := fmt.Sprintf("gameco:rate-limit:%s:%s", policy.Name, clientIP(c))
+		identity := clientIP(c)
+		if policy.KeyFunc != nil {
+			identity = policy.KeyFunc(c)
+		}
+		if identity == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing rate limit identity"})
+			return
+		}
+		key := fmt.Sprintf("gameco:rate-limit:%s:%s", policy.Name, identity)
 		result, err := client.Eval(
 			c.Request.Context(),
 			rateLimitScript,
@@ -69,6 +105,14 @@ func RateLimit(client redis.UniversalClient, policy RateLimitPolicy) gin.Handler
 
 		c.Next()
 	}
+}
+
+func bearerToken(c *gin.Context) string {
+	header := c.GetHeader("Authorization")
+	if !strings.HasPrefix(header, "Bearer ") {
+		return ""
+	}
+	return strings.TrimPrefix(header, "Bearer ")
 }
 
 func parseRateLimitResult(result interface{}) (int64, int64, error) {

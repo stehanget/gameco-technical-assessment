@@ -6,13 +6,15 @@ import (
 	"strings"
 	"testing"
 
+	"gameco-technical-assessment/internal/platform/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
 func TestCORSMiddlewareAllowsConfiguredOriginAndHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(newCORSMiddleware())
+	router.Use(middleware.CORS())
 	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
 
 	record := httptest.NewRecorder()
@@ -40,7 +42,7 @@ func TestCORSMiddlewareAllowsConfiguredOriginAndHeaders(t *testing.T) {
 func TestCORSMiddlewareRejectsUnconfiguredOrigin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(newCORSMiddleware())
+	router.Use(middleware.CORS())
 	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
 
 	record := httptest.NewRecorder()

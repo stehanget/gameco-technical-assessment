@@ -27,7 +27,7 @@ func NewHandler(service *Service) *Handler {
 // @Param request body RegisterRequest true "Register payload"
 // @Success 201 {object} TokenEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
-// @Router /auth/register [post]
+// @Router /api/v1/auth/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var request RegisterRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -54,7 +54,7 @@ func (h *Handler) Register(c *gin.Context) {
 // @Success 200 {object} TokenEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
 // @Failure 401 {object} httpx.ErrorResponse
-// @Router /auth/login [post]
+// @Router /api/v1/auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var request LoginRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -81,7 +81,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Success 200 {object} TokenEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
 // @Failure 401 {object} httpx.ErrorResponse
-// @Router /auth/refresh [post]
+// @Router /api/v1/auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	var request RefreshRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -107,7 +107,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 // @Param request body LogoutRequest true "Logout payload"
 // @Success 200 {object} MessageEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
-// @Router /auth/logout [post]
+// @Router /api/v1/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	var request LogoutRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -132,7 +132,7 @@ func (h *Handler) Logout(c *gin.Context) {
 // @Success 200 {object} UserEnvelope
 // @Failure 401 {object} httpx.ErrorResponse
 // @Failure 404 {object} httpx.ErrorResponse
-// @Router /auth/me [get]
+// @Router /api/v1/auth/me [get]
 func (h *Handler) Me(c *gin.Context) {
 	claims, ok := middleware.ClaimsFromContext(c)
 	if !ok {

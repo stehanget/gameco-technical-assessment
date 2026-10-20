@@ -9,14 +9,23 @@ import (
 )
 
 type JWTManager struct {
-	secret []byte
+	current  []byte
+	previous [][]byte
 }
 
-func NewJWTManager(secret string) *JWTManager {
-	return &JWTManager{secret: []byte(secret)}
+func NewJWTManager(currentSecret string, previousSecrets ...string) *JWTManager {
+	previous := make([][]byte, 0, len(previousSecrets))
+	for _, secret := range previousSecrets {
+		previous = append(previous, []byte(secret))
+	}
+	return &JWTManager{current: []byte(currentSecret), previous: previous}
 }
 
 func (m *JWTManager) GenerateAccessToken(userID, tokenID string, ttl time.Duration) (string, error) {
+	if len(m.current) == 0 {
+		return "", fmt.Errorf("current JWT signing key is not configured")
+	}
+
 	now := time.Now()
 	if tokenID == "" {
 		tokenID = uuid.NewString()
@@ -31,25 +40,30 @@ func (m *JWTManager) GenerateAccessToken(userID, tokenID string, ttl time.Durati
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(m.secret)
+	return token.SignedString(m.current)
 }
 
 func (m *JWTManager) ParseAccessToken(tokenString string) (*AccessTokenClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &AccessTokenClaims{}, func(token *jwt.Token) (any, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
+	keys := make([][]byte, 0, 1+len(m.previous))
+	keys = append(keys, m.current)
+	keys = append(keys, m.previous...)
+
+	var lastErr error
+	for _, secret := range keys {
+		claims := &AccessTokenClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
+			}
+			return secret, nil
+		})
+		if err == nil && token.Valid {
+			return claims, nil
 		}
-
-		return m.secret, nil
-	})
-	if err != nil {
-		return nil, err
+		lastErr = err
 	}
-
-	claims, ok := token.Claims.(*AccessTokenClaims)
-	if !ok || !token.Valid {
-		return nil, fmt.Errorf("invalid token claims")
+	if lastErr == nil {
+		return nil, fmt.Errorf("no JWT signing keys are configured")
 	}
-
-	return claims, nil
+	return nil, lastErr
 }

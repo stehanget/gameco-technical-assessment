@@ -7,7 +7,7 @@
 // @title gameco-technical-assessment API
 // @version 1.0
 // @description Gameco marketplace backend technical assessment API with Gin, GORM, Goose, JWT + Redis, and Swagger.
-// @BasePath /api/v1
+// @BasePath /
 // @schemes http https
 // @tag.name auth
 // @tag.description Authentication, session lifecycle, and current-user authorization context.
