@@ -163,6 +163,8 @@ definitions:
     type: object
   httpx.ErrorResponse:
     properties:
+      code:
+        type: string
       message:
         type: string
       request_id:

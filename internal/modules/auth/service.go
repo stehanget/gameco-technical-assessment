@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"gameco-technical-assessment/internal/config"
+	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/constants/role"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
+	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/identifier"
 
 	"github.com/redis/go-redis/v9"
@@ -38,7 +40,7 @@ func (s *Service) Register(ctx context.Context, input RegisterRequest, metadata 
 		return TokenResponse{}, err
 	}
 	if exists {
-		return TokenResponse{}, fmt.Errorf("email already registered")
+		return TokenResponse{}, faults.New(faults.KindConflict, errorconst.AuthEmailAlreadyRegistered, nil)
 	}
 	passwordHash, err := platformauth.HashPassword(input.Password)
 	if err != nil {
@@ -69,12 +71,12 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 	user, err := s.repository.FindByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return TokenResponse{}, fmt.Errorf("invalid credentials")
+			return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, nil)
 		}
 		return TokenResponse{}, err
 	}
 	if err := platformauth.ComparePassword(user.PasswordHash, input.Password); err != nil {
-		return TokenResponse{}, fmt.Errorf("invalid credentials")
+		return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, err)
 	}
 	return s.issueTokenPair(ctx, user, metadata)
 }
@@ -84,7 +86,11 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 	session, err := s.repository.FindActiveSessionByRefreshHash(ctx, refreshHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return TokenResponse{}, s.repository.HandleRefreshTokenReuse(ctx, refreshHash)
+			reuseErr := s.repository.HandleRefreshTokenReuse(ctx, refreshHash)
+			if errors.Is(reuseErr, ErrRefreshTokenReuse) {
+				return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthRefreshTokenReused, reuseErr)
+			}
+			return TokenResponse{}, reuseErr
 		}
 		return TokenResponse{}, err
 	}
@@ -118,7 +124,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 	}
 	if _, err := s.repository.RotateRefreshSession(ctx, refreshHash, replacement); err != nil {
 		if errors.Is(err, ErrRefreshTokenReuse) {
-			return TokenResponse{}, ErrRefreshTokenReuse
+			return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthRefreshTokenReused, err)
 		}
 		return TokenResponse{}, err
 	}
@@ -140,6 +146,9 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 func (s *Service) Me(ctx context.Context, userID uint) (UserResponse, error) {
 	user, err := s.repository.FindByID(ctx, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return UserResponse{}, faults.New(faults.KindNotFound, errorconst.AuthUserNotFound, err)
+		}
 		return UserResponse{}, err
 	}
 	access, err := s.repository.Access(ctx, user.ID)
@@ -163,7 +172,7 @@ func (s *Service) issueTokenPair(ctx context.Context, user User, metadata Sessio
 		return TokenResponse{}, err
 	}
 	if len(access.Roles) == 0 {
-		return TokenResponse{}, fmt.Errorf("user has no assigned roles")
+		return TokenResponse{}, faults.New(faults.KindInternal, errorconst.AuthNoAssignedRoles, nil)
 	}
 	jtiID, err := identifier.NewPublicID()
 	if err != nil {

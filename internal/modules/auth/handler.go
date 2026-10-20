@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	errorconst "gameco-technical-assessment/internal/constants/error"
+	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/httpx"
 	"gameco-technical-assessment/internal/platform/middleware"
 
@@ -31,13 +33,13 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) Register(c *gin.Context) {
 	var request RegisterRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
 
 	response, err := h.service.Register(c.Request.Context(), request, SessionMetadata{UserAgent: c.GetHeader("User-Agent"), IPAddress: c.ClientIP()})
 	if err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 
@@ -58,13 +60,13 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var request LoginRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
 
 	response, err := h.service.Login(c.Request.Context(), request, SessionMetadata{UserAgent: c.GetHeader("User-Agent"), IPAddress: c.ClientIP()})
 	if err != nil {
-		httpx.Error(c, http.StatusUnauthorized, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 
@@ -85,13 +87,13 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Refresh(c *gin.Context) {
 	var request RefreshRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
 
 	response, err := h.service.Refresh(c.Request.Context(), request.RefreshToken, SessionMetadata{UserAgent: c.GetHeader("User-Agent"), IPAddress: c.ClientIP()})
 	if err != nil {
-		httpx.Error(c, http.StatusUnauthorized, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 
@@ -111,12 +113,12 @@ func (h *Handler) Refresh(c *gin.Context) {
 func (h *Handler) Logout(c *gin.Context) {
 	var request LogoutRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
 
 	if err := h.service.Logout(c.Request.Context(), request.RefreshToken); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 
@@ -136,19 +138,19 @@ func (h *Handler) Logout(c *gin.Context) {
 func (h *Handler) Me(c *gin.Context) {
 	claims, ok := middleware.ClaimsFromContext(c)
 	if !ok {
-		httpx.Error(c, http.StatusUnauthorized, "missing auth context")
+		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
 		return
 	}
 
 	userID, err := strconv.ParseUint(claims.UserID, 10, 64)
 	if err != nil {
-		httpx.Error(c, http.StatusUnauthorized, "invalid user context")
+		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, err))
 		return
 	}
 
 	response, err := h.service.Me(c.Request.Context(), uint(userID))
 	if err != nil {
-		httpx.Error(c, http.StatusNotFound, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 

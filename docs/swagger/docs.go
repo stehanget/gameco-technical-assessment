@@ -610,6 +610,9 @@ const docTemplate = `{
         "httpx.ErrorResponse": {
             "type": "object",
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "message": {
                     "type": "string"
                 },

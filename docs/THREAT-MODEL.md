@@ -53,6 +53,7 @@ The repository currently has implemented authentication, database-backed session
 | Request tracing | Request ID middleware exposes `X-Request-ID` | `internal/platform/middleware/request_id.go` |
 | Schema integrity | Internal numeric IDs, unique public IDs, join-table keys, and declared foreign keys are documented/migrated | `migrations/`, `docs/schema.dbml` |
 | Regression coverage | Register → login → refresh rotation → `/auth/me`, including refresh-token reuse handling, is covered by a black-box E2E test | `tests/e2e/auth_test.go` |
+| Error responses | Shared error envelope, status-based safe mapper, typed auth errors, request ID propagation, structured logging, panic recovery, and handler migration away from raw error responses | `internal/platform/httpx/response.go`, `internal/platform/httpx/error_test.go`, `internal/platform/faults/error.go`, `internal/constants/error/codes.go`, `internal/constants/error/messages.go`, `internal/platform/middleware/request_id.go`, `internal/platform/middleware/logging.go`, `internal/platform/middleware/recovery.go`, `docs/ADR/0005-centralized-error-handling.md` |
 
 ## OWASP API Security Top 10 (2023) mapping
 
@@ -196,5 +197,6 @@ The repository currently has implemented authentication, database-backed session
 4. Swagger is available from the application router and needs an explicit production exposure decision.
 5. The current rate limiter uses one global middleware with anonymous IP and authenticated-user policies; trusted proxy configuration and additional business-flow policies for future marketplace endpoints remain to be designed.
 6. The current auth registration/login behavior still needs a dedicated anti-enumeration and timing-hardening review.
+7. Error response foundations, status-based safe mapping, and typed auth errors exist. Marketplace domain-error classification, stable marketplace codes, and field-level validation details remain to be expanded as marketplace handlers are implemented.
 
 These are intentionally documented as residual risks rather than hidden behind claims that the assessment scope is already complete.

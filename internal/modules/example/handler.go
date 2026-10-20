@@ -3,6 +3,8 @@ package example
 import (
 	"net/http"
 
+	errorconst "gameco-technical-assessment/internal/constants/error"
+	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/httpx"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +29,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) List(c *gin.Context) {
 	items, err := h.service.List()
 	if err != nil {
-		httpx.Error(c, http.StatusInternalServerError, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 
@@ -48,13 +50,13 @@ func (h *Handler) List(c *gin.Context) {
 func (h *Handler) Create(c *gin.Context) {
 	var request CreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
 
 	item, err := h.service.Create(request)
 	if err != nil {
-		httpx.Error(c, http.StatusInternalServerError, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 
@@ -75,13 +77,13 @@ func (h *Handler) Create(c *gin.Context) {
 func (h *Handler) EnqueueCreate(c *gin.Context) {
 	var request CreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.Error(c, http.StatusBadRequest, err.Error())
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
 
 	result, err := h.service.EnqueueCreate(c.Request.Context(), request)
 	if err != nil {
-		httpx.Error(c, http.StatusInternalServerError, err.Error())
+		httpx.HandleError(c, err)
 		return
 	}
 

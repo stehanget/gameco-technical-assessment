@@ -3,12 +3,14 @@ package middleware
 import (
 	"fmt"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	errorconst "gameco-technical-assessment/internal/constants/error"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
+	"gameco-technical-assessment/internal/platform/faults"
+	"gameco-technical-assessment/internal/platform/httpx"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -66,7 +68,8 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 			identity = policy.KeyFunc(c)
 		}
 		if identity == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing rate limit identity"})
+			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.Unauthorized, nil))
+			c.Abort()
 			return
 		}
 		key := fmt.Sprintf("gameco:rate-limit:%s:%s", policy.Name, identity)
@@ -77,13 +80,15 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 			policy.Window.Milliseconds(),
 		).Result()
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "rate limit service unavailable"})
+			httpx.HandleError(c, faults.New(faults.KindUnavailable, errorconst.ServiceUnavailable, err))
+			c.Abort()
 			return
 		}
 
 		count, ttl, err := parseRateLimitResult(result)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "rate limit service unavailable"})
+			httpx.HandleError(c, faults.New(faults.KindUnavailable, errorconst.ServiceUnavailable, err))
+			c.Abort()
 			return
 		}
 
@@ -99,7 +104,8 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 				retryAfter = 1
 			}
 			c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
+			httpx.HandleError(c, faults.New(faults.KindRateLimit, errorconst.RateLimitExceeded, nil))
+			c.Abort()
 			return
 		}
 
