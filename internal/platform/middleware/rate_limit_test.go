@@ -49,7 +49,7 @@ func TestRateLimitUsesRedisAndReturnsRateHeaders(t *testing.T) {
 	if got := record.Header().Get("X-RateLimit-Remaining"); got != "0" {
 		t.Fatalf("expected remaining header 0, got %q", got)
 	}
-	if got := record.Body.String(); got != `{"success":false,"code":"common.rate_limit_exceeded","message":"rate limit exceeded"}` {
+	if got := record.Body.String(); got != `{"success":false,"code":"common.rate_limit_exceeded","message":"rate limit exceeded","request_id":null}` {
 		t.Fatalf("expected centralized rate limit error response, got %s", got)
 	}
 }

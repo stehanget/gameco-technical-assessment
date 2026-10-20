@@ -9,6 +9,7 @@ import (
 
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
+	platformclock "gameco-technical-assessment/internal/platform/clock"
 	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/httpx"
 
@@ -38,6 +39,13 @@ type RateLimitPolicySet struct {
 }
 
 func RateLimit(client redis.UniversalClient, policies RateLimitPolicySet, jwtManager *platformauth.JWTManager) gin.HandlerFunc {
+	return RateLimitWithClock(client, policies, jwtManager, platformclock.System{})
+}
+
+func RateLimitWithClock(client redis.UniversalClient, policies RateLimitPolicySet, jwtManager *platformauth.JWTManager, timeSource platformclock.Clock) gin.HandlerFunc {
+	if timeSource == nil {
+		timeSource = platformclock.System{}
+	}
 	return rateLimitHandler(client, func(c *gin.Context) RateLimitPolicy {
 		if jwtManager != nil {
 			if token := bearerToken(c); token != "" {
@@ -52,10 +60,10 @@ func RateLimit(client redis.UniversalClient, policies RateLimitPolicySet, jwtMan
 			}
 		}
 		return policies.Anonymous
-	})
+	}, timeSource)
 }
 
-func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Context) RateLimitPolicy) gin.HandlerFunc {
+func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Context) RateLimitPolicy, timeSource platformclock.Clock) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		policy := selectPolicy(c)
 		if client == nil || policy.Limit <= 0 || policy.Window <= 0 {
@@ -93,7 +101,7 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 		}
 
 		remaining := maxInt64(int64(policy.Limit)-count, 0)
-		resetAt := time.Now().Add(time.Duration(maxInt64(ttl, 0)) * time.Millisecond)
+		resetAt := timeSource.Now().Add(time.Duration(maxInt64(ttl, 0)) * time.Millisecond)
 		c.Header("X-RateLimit-Limit", strconv.Itoa(policy.Limit))
 		c.Header("X-RateLimit-Remaining", strconv.FormatInt(remaining, 10))
 		c.Header("X-RateLimit-Reset", strconv.FormatInt(resetAt.Unix(), 10))

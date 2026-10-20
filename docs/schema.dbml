@@ -149,6 +149,10 @@ Table products {
     (seller_id) [name: 'idx_products_seller_id']
     (category_id) [name: 'idx_products_category_id']
     (status, deleted_at) [name: 'idx_products_catalog_visibility']
+    (status, deleted_at, created_at, public_id) [name: 'idx_products_catalog_created_at']
+    (status, deleted_at, price_amount, public_id) [name: 'idx_products_catalog_price']
+    (name) [name: 'idx_products_name_trgm', note: 'PostgreSQL GIN trigram index on lower(name).']
+    (description) [name: 'idx_products_description_trgm', note: 'PostgreSQL GIN trigram index on lower(description).']
   }
 
   Note: 'Product soft-delete is represented by deleted_at, not by a deleted product status. Stock quantity is the current inventory source of truth.'

@@ -25,38 +25,38 @@ type LogoutRequest struct {
 }
 
 type UserResponse struct {
-	PublicID    uuid.UUID `json:"public_id"`
-	Email       string    `json:"email"`
-	Roles       []string  `json:"roles"`
-	Permissions []string  `json:"permissions"`
+	PublicID    uuid.UUID `json:"public_id" binding:"required"`
+	Email       string    `json:"email" binding:"required"`
+	Roles       []string  `json:"roles" binding:"required"`
+	Permissions []string  `json:"permissions" binding:"required"`
 }
 
 type TokenResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	TokenType    string       `json:"token_type"`
-	ExpiresIn    int64        `json:"expires_in"`
-	User         UserResponse `json:"user"`
+	AccessToken  string       `json:"access_token" binding:"required"`
+	RefreshToken string       `json:"refresh_token" binding:"required"`
+	TokenType    string       `json:"token_type" binding:"required"`
+	ExpiresIn    int64        `json:"expires_in" binding:"required"`
+	User         UserResponse `json:"user" binding:"required"`
 }
 
 type TokenEnvelope struct {
-	Success bool          `json:"success"`
-	Data    TokenResponse `json:"data"`
-	Meta    *httpx.Meta   `json:"meta,omitempty"`
+	Success bool          `json:"success" binding:"required"`
+	Data    TokenResponse `json:"data" binding:"required"`
+	Meta    *httpx.Meta   `json:"meta" binding:"required"`
 }
 
 type UserEnvelope struct {
-	Success bool         `json:"success"`
-	Data    UserResponse `json:"data"`
-	Meta    *httpx.Meta  `json:"meta,omitempty"`
+	Success bool         `json:"success" binding:"required"`
+	Data    UserResponse `json:"data" binding:"required"`
+	Meta    *httpx.Meta  `json:"meta" binding:"required"`
 }
 
 type MessageResponse struct {
-	Message string `json:"message"`
+	Message string `json:"message" binding:"required"`
 }
 
 type MessageEnvelope struct {
-	Success bool            `json:"success"`
-	Data    MessageResponse `json:"data"`
-	Meta    *httpx.Meta     `json:"meta,omitempty"`
+	Success bool            `json:"success" binding:"required"`
+	Data    MessageResponse `json:"data" binding:"required"`
+	Meta    *httpx.Meta     `json:"meta" binding:"required"`
 }

@@ -1,4 +1,6 @@
 -- +goose Up
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TYPE product_status AS ENUM ('draft', 'active', 'inactive');
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -34,7 +36,20 @@ CREATE INDEX IF NOT EXISTS idx_products_category_id
 CREATE INDEX IF NOT EXISTS idx_products_catalog_visibility
     ON products (status, deleted_at);
 
+CREATE INDEX IF NOT EXISTS idx_products_catalog_created_at
+    ON products (status, deleted_at, created_at, public_id);
+
+CREATE INDEX IF NOT EXISTS idx_products_catalog_price
+    ON products (status, deleted_at, price_amount, public_id);
+
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm
+    ON products USING GIN (lower(name) gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_products_description_trgm
+    ON products USING GIN (lower(description) gin_trgm_ops);
+
 -- +goose Down
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS categories;
 DROP TYPE IF EXISTS product_status;
+DROP EXTENSION IF EXISTS pg_trgm;

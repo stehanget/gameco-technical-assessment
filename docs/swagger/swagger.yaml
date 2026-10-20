@@ -28,11 +28,17 @@ definitions:
         $ref: '#/definitions/httpx.Meta'
       success:
         type: boolean
+    required:
+    - data
+    - meta
+    - success
     type: object
   auth.MessageResponse:
     properties:
       message:
         type: string
+    required:
+    - message
     type: object
   auth.RefreshRequest:
     properties:
@@ -62,6 +68,10 @@ definitions:
         $ref: '#/definitions/httpx.Meta'
       success:
         type: boolean
+    required:
+    - data
+    - meta
+    - success
     type: object
   auth.TokenResponse:
     properties:
@@ -75,6 +85,12 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/auth.UserResponse'
+    required:
+    - access_token
+    - expires_in
+    - refresh_token
+    - token_type
+    - user
     type: object
   auth.UserEnvelope:
     properties:
@@ -84,6 +100,10 @@ definitions:
         $ref: '#/definitions/httpx.Meta'
       success:
         type: boolean
+    required:
+    - data
+    - meta
+    - success
     type: object
   auth.UserResponse:
     properties:
@@ -99,6 +119,99 @@ definitions:
         items:
           type: string
         type: array
+    required:
+    - email
+    - permissions
+    - public_id
+    - roles
+    type: object
+  catalog.CategoryResponse:
+    properties:
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - slug
+    type: object
+  catalog.ItemResponse:
+    properties:
+      data:
+        $ref: '#/definitions/catalog.ProductResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  catalog.ListMeta:
+    properties:
+      has_more:
+        type: boolean
+      next_cursor:
+        type: string
+        x-nullable: true
+      per_page:
+        type: integer
+      request_id:
+        type: string
+        x-nullable: true
+    required:
+    - has_more
+    - next_cursor
+    - per_page
+    - request_id
+    type: object
+  catalog.ListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/catalog.ProductResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/catalog.ListMeta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  catalog.ProductResponse:
+    properties:
+      category:
+        $ref: '#/definitions/catalog.CategoryResponse'
+      created_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      price_amount:
+        type: integer
+      public_id:
+        type: string
+      stock_quantity:
+        type: integer
+      updated_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+    required:
+    - category
+    - created_at
+    - description
+    - name
+    - price_amount
+    - public_id
+    - stock_quantity
+    - updated_at
     type: object
   example.CreateRequest:
     properties:
@@ -117,6 +230,10 @@ definitions:
         $ref: '#/definitions/httpx.Meta'
       success:
         type: boolean
+    required:
+    - data
+    - meta
+    - success
     type: object
   example.EnqueueResponse:
     properties:
@@ -128,6 +245,11 @@ definitions:
         type: string
       type:
         type: string
+    required:
+    - id
+    - queue
+    - state
+    - type
     type: object
   example.ItemResponse:
     properties:
@@ -137,6 +259,10 @@ definitions:
         $ref: '#/definitions/httpx.Meta'
       success:
         type: boolean
+    required:
+    - data
+    - meta
+    - success
     type: object
   example.ListResponse:
     properties:
@@ -148,6 +274,10 @@ definitions:
         $ref: '#/definitions/httpx.Meta'
       success:
         type: boolean
+    required:
+    - data
+    - meta
+    - success
     type: object
   example.Response:
     properties:
@@ -155,11 +285,16 @@ definitions:
         type: string
       public_id:
         type: string
+    required:
+    - name
+    - public_id
     type: object
   health.StatusResponse:
     properties:
       status:
         type: string
+    required:
+    - status
     type: object
   httpx.ErrorResponse:
     properties:
@@ -169,13 +304,22 @@ definitions:
         type: string
       request_id:
         type: string
+        x-nullable: true
       success:
         type: boolean
+    required:
+    - code
+    - message
+    - request_id
+    - success
     type: object
   httpx.Meta:
     properties:
       request_id:
         type: string
+        x-nullable: true
+    required:
+    - request_id
     type: object
 info:
   contact: {}
@@ -395,6 +539,101 @@ paths:
       summary: Enqueue example creation
       tags:
       - examples
+  /api/v1/products:
+    get:
+      description: Lists active, non-deleted products with filtering, search, sorting,
+        and cursor pagination
+      parameters:
+      - description: Case-insensitive search over product name and description
+        in: query
+        name: q
+        type: string
+      - description: Category slug
+        in: query
+        name: category
+        type: string
+      - description: Minimum price amount
+        in: query
+        name: min_price
+        type: integer
+      - description: Maximum price amount
+        in: query
+        name: max_price
+        type: integer
+      - default: created_at
+        description: Sort field
+        enum:
+        - created_at
+        - name
+        - price
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Opaque cursor returned by the previous response
+        in: query
+        name: cursor
+        type: string
+      - default: 20
+        description: Number of records per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.ListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: List public products
+      tags:
+      - products
+  /api/v1/products/{product_public_id}:
+    get:
+      description: Returns one active, non-deleted product by its UUIDv7 public identifier
+      parameters:
+      - description: Product public identifier
+        format: uuid
+        in: path
+        name: product_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.ItemResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Get public product
+      tags:
+      - products
   /health:
     get:
       description: Returns liveness status

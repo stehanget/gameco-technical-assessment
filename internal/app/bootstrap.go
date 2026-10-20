@@ -8,6 +8,7 @@ import (
 	"gameco-technical-assessment/internal/config"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/cache"
+	platformclock "gameco-technical-assessment/internal/platform/clock"
 	"gameco-technical-assessment/internal/platform/database"
 	"gameco-technical-assessment/internal/platform/logger"
 	"gameco-technical-assessment/internal/workers/jobs"
@@ -23,6 +24,7 @@ type Container struct {
 	Redis     *redis.Client
 	Jobs      *jobs.Enqueuer
 	JWTSigner *platformauth.JWTManager
+	Clock     platformclock.Clock
 }
 
 func Bootstrap(ctx context.Context) (*Container, error) {
@@ -49,13 +51,15 @@ func Bootstrap(ctx context.Context) (*Container, error) {
 
 	jobEnqueuer := jobs.NewEnqueuer(cfg.Redis)
 
+	timeSource := platformclock.System{}
 	return &Container{
 		Config:    cfg,
 		Logger:    appLogger,
 		DB:        db,
 		Redis:     redisClient,
 		Jobs:      jobEnqueuer,
-		JWTSigner: platformauth.NewJWTManager(cfg.App.JWTSecret, cfg.App.JWTPreviousSecrets...),
+		JWTSigner: platformauth.NewJWTManagerWithClock(cfg.App.JWTSecret, timeSource, cfg.App.JWTPreviousSecrets...),
+		Clock:     timeSource,
 	}, nil
 }
 

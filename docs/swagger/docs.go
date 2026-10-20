@@ -340,6 +340,144 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/products": {
+            "get": {
+                "description": "Lists active, non-deleted products with filtering, search, sorting, and cursor pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "List public products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Case-insensitive search over product name and description",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category slug",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Minimum price amount",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum price amount",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "created_at",
+                            "name",
+                            "price"
+                        ],
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort direction",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque cursor returned by the previous response",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of records per page",
+                        "name": "per_page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.ListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{product_public_id}": {
+            "get": {
+                "description": "Returns one active, non-deleted product by its UUIDv7 public identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get public product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product public identifier",
+                        "name": "product_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.ItemResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns liveness status",
@@ -393,6 +531,11 @@ const docTemplate = `{
         },
         "auth.MessageEnvelope": {
             "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
             "properties": {
                 "data": {
                     "$ref": "#/definitions/auth.MessageResponse"
@@ -407,6 +550,9 @@ const docTemplate = `{
         },
         "auth.MessageResponse": {
             "type": "object",
+            "required": [
+                "message"
+            ],
             "properties": {
                 "message": {
                     "type": "string"
@@ -444,6 +590,11 @@ const docTemplate = `{
         },
         "auth.TokenEnvelope": {
             "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
             "properties": {
                 "data": {
                     "$ref": "#/definitions/auth.TokenResponse"
@@ -458,6 +609,13 @@ const docTemplate = `{
         },
         "auth.TokenResponse": {
             "type": "object",
+            "required": [
+                "access_token",
+                "expires_in",
+                "refresh_token",
+                "token_type",
+                "user"
+            ],
             "properties": {
                 "access_token": {
                     "type": "string"
@@ -478,6 +636,11 @@ const docTemplate = `{
         },
         "auth.UserEnvelope": {
             "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
             "properties": {
                 "data": {
                     "$ref": "#/definitions/auth.UserResponse"
@@ -492,6 +655,12 @@ const docTemplate = `{
         },
         "auth.UserResponse": {
             "type": "object",
+            "required": [
+                "email",
+                "permissions",
+                "public_id",
+                "roles"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -513,6 +682,130 @@ const docTemplate = `{
                 }
             }
         },
+        "catalog.CategoryResponse": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.ItemResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/catalog.ProductResponse"
+                },
+                "meta": {
+                    "$ref": "#/definitions/httpx.Meta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "catalog.ListMeta": {
+            "type": "object",
+            "required": [
+                "has_more",
+                "next_cursor",
+                "per_page",
+                "request_id"
+            ],
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "next_cursor": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "request_id": {
+                    "type": "string",
+                    "x-nullable": true
+                }
+            }
+        },
+        "catalog.ListResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.ProductResponse"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/catalog.ListMeta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "catalog.ProductResponse": {
+            "type": "object",
+            "required": [
+                "category",
+                "created_at",
+                "description",
+                "name",
+                "price_amount",
+                "public_id",
+                "stock_quantity",
+                "updated_at"
+            ],
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/catalog.CategoryResponse"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-21T10:15:30Z"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_amount": {
+                    "type": "integer"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "stock_quantity": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-21T10:15:30Z"
+                }
+            }
+        },
         "example.CreateRequest": {
             "type": "object",
             "required": [
@@ -528,6 +821,11 @@ const docTemplate = `{
         },
         "example.EnqueueItemResponse": {
             "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
             "properties": {
                 "data": {
                     "$ref": "#/definitions/example.EnqueueResponse"
@@ -542,6 +840,12 @@ const docTemplate = `{
         },
         "example.EnqueueResponse": {
             "type": "object",
+            "required": [
+                "id",
+                "queue",
+                "state",
+                "type"
+            ],
             "properties": {
                 "id": {
                     "type": "string"
@@ -559,6 +863,11 @@ const docTemplate = `{
         },
         "example.ItemResponse": {
             "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
             "properties": {
                 "data": {
                     "$ref": "#/definitions/example.Response"
@@ -573,6 +882,11 @@ const docTemplate = `{
         },
         "example.ListResponse": {
             "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
             "properties": {
                 "data": {
                     "type": "array",
@@ -590,6 +904,10 @@ const docTemplate = `{
         },
         "example.Response": {
             "type": "object",
+            "required": [
+                "name",
+                "public_id"
+            ],
             "properties": {
                 "name": {
                     "type": "string"
@@ -601,6 +919,9 @@ const docTemplate = `{
         },
         "health.StatusResponse": {
             "type": "object",
+            "required": [
+                "status"
+            ],
             "properties": {
                 "status": {
                     "type": "string"
@@ -609,6 +930,12 @@ const docTemplate = `{
         },
         "httpx.ErrorResponse": {
             "type": "object",
+            "required": [
+                "code",
+                "message",
+                "request_id",
+                "success"
+            ],
             "properties": {
                 "code": {
                     "type": "string"
@@ -617,7 +944,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "request_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "success": {
                     "type": "boolean"
@@ -626,9 +954,13 @@ const docTemplate = `{
         },
         "httpx.Meta": {
             "type": "object",
+            "required": [
+                "request_id"
+            ],
             "properties": {
                 "request_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         }

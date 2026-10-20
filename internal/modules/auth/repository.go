@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	platformclock "gameco-technical-assessment/internal/platform/clock"
+
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -18,10 +20,18 @@ var ErrRefreshTokenReuse = errors.New("invalid or reused refresh token")
 type Repository struct {
 	db    *gorm.DB
 	redis redis.UniversalClient
+	clock platformclock.Clock
 }
 
 func NewRepository(db *gorm.DB, redisClient redis.UniversalClient) *Repository {
-	return &Repository{db: db, redis: redisClient}
+	return NewRepositoryWithClock(db, redisClient, platformclock.System{})
+}
+
+func NewRepositoryWithClock(db *gorm.DB, redisClient redis.UniversalClient, timeSource platformclock.Clock) *Repository {
+	if timeSource == nil {
+		timeSource = platformclock.System{}
+	}
+	return &Repository{db: db, redis: redisClient, clock: timeSource}
 }
 
 func (r *Repository) DB() *gorm.DB { return r.db }
@@ -115,7 +125,7 @@ func (r *Repository) CreateSession(ctx context.Context, session AuthSession) (Au
 func (r *Repository) FindActiveSessionByRefreshHash(ctx context.Context, refreshHash string) (AuthSession, error) {
 	var session AuthSession
 	err := r.db.WithContext(ctx).
-		Where("refresh_hash = ? AND revoked_at IS NULL AND expires_at > ?", refreshHash, time.Now()).
+		Where("refresh_hash = ? AND revoked_at IS NULL AND expires_at > ?", refreshHash, r.clock.Now()).
 		First(&session).Error
 	if err == nil {
 		r.cacheSession(ctx, session)
@@ -130,7 +140,7 @@ func (r *Repository) FindActiveSessionByJTI(ctx context.Context, jti string) (Au
 
 	var session AuthSession
 	err := r.db.WithContext(ctx).
-		Where("jti = ? AND revoked_at IS NULL AND expires_at > ?", jti, time.Now()).
+		Where("jti = ? AND revoked_at IS NULL AND expires_at > ?", jti, r.clock.Now()).
 		First(&session).Error
 	if err == nil {
 		r.cacheSession(ctx, session)
@@ -150,13 +160,13 @@ func (r *Repository) RotateRefreshSession(ctx context.Context, refreshHash strin
 	var oldSession AuthSession
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("refresh_hash = ? AND revoked_at IS NULL AND expires_at > ?", refreshHash, time.Now()).
+			Where("refresh_hash = ? AND revoked_at IS NULL AND expires_at > ?", refreshHash, r.clock.Now()).
 			First(&oldSession).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				var reused AuthSession
 				if lookupErr := tx.Where("refresh_hash = ?", refreshHash).First(&reused).Error; lookupErr == nil && reused.RevokedAt != nil {
-					now := time.Now()
+					now := r.clock.Now()
 					if result := tx.Model(&AuthSession{}).Where("user_id = ? AND revoked_at IS NULL", reused.UserID).
 						Updates(map[string]any{"revoked_at": now, "updated_at": now}); result.Error != nil {
 						return result.Error
@@ -167,7 +177,7 @@ func (r *Repository) RotateRefreshSession(ctx context.Context, refreshHash strin
 			return ErrRefreshTokenReuse
 		}
 
-		now := time.Now()
+		now := r.clock.Now()
 		r.invalidateSession(ctx, oldSession)
 		if result := tx.Model(&AuthSession{}).Where("id = ? AND revoked_at IS NULL", oldSession.ID).
 			Updates(map[string]any{"revoked_at": now, "last_used_at": now, "updated_at": now}); result.Error != nil {
@@ -201,7 +211,7 @@ func (r *Repository) RevokeSessionByRefreshHash(ctx context.Context, refreshHash
 	}
 
 	r.invalidateSession(ctx, session)
-	now := time.Now()
+	now := r.clock.Now()
 	return r.db.WithContext(ctx).Model(&AuthSession{}).
 		Where("id = ? AND revoked_at IS NULL", session.ID).
 		Updates(map[string]any{"revoked_at": now, "updated_at": now}).Error
@@ -218,7 +228,7 @@ func (r *Repository) HandleRefreshTokenReuse(ctx context.Context, refreshHash st
 		if err := tx.WithContext(ctx).Where("user_id = ? AND revoked_at IS NULL", matched.UserID).Find(&sessions).Error; err != nil {
 			return err
 		}
-		now := time.Now()
+		now := r.clock.Now()
 		return tx.Model(&AuthSession{}).Where("user_id = ? AND revoked_at IS NULL", matched.UserID).
 			Updates(map[string]any{"revoked_at": now, "updated_at": now}).Error
 	})
@@ -250,7 +260,7 @@ func (r *Repository) cachedActiveSession(ctx context.Context, jti string) (AuthS
 		return AuthSession{}, false
 	}
 	var session AuthSession
-	if json.Unmarshal(payload, &session) != nil || session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) {
+	if json.Unmarshal(payload, &session) != nil || session.RevokedAt != nil || !session.ExpiresAt.After(r.clock.Now()) {
 		return AuthSession{}, false
 	}
 	return session, true
@@ -260,7 +270,7 @@ func (r *Repository) cacheSession(ctx context.Context, session AuthSession) {
 	if r.redis == nil || session.RevokedAt != nil {
 		return
 	}
-	ttl := time.Until(session.ExpiresAt)
+	ttl := session.ExpiresAt.Sub(r.clock.Now())
 	if ttl <= 0 {
 		return
 	}
@@ -278,7 +288,7 @@ func (r *Repository) invalidateSession(ctx context.Context, session AuthSession)
 	if r.redis == nil || session.JTI == "" {
 		return
 	}
-	ttl := time.Until(session.ExpiresAt)
+	ttl := session.ExpiresAt.Sub(r.clock.Now())
 	if ttl <= 0 {
 		ttl = time.Minute
 	}

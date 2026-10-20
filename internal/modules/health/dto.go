@@ -1,5 +1,5 @@
 package health
 
 type StatusResponse struct {
-	Status string `json:"status"`
+	Status string `json:"status" binding:"required"`
 }

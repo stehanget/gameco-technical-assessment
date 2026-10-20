@@ -12,15 +12,15 @@ type CreateRequest struct {
 }
 
 type Response struct {
-	PublicID uuid.UUID `json:"public_id"`
-	Name     string    `json:"name"`
+	PublicID uuid.UUID `json:"public_id" binding:"required"`
+	Name     string    `json:"name" binding:"required"`
 }
 
 type EnqueueResponse struct {
-	ID    string `json:"id"`
-	Type  string `json:"type"`
-	Queue string `json:"queue"`
-	State string `json:"state"`
+	ID    string `json:"id" binding:"required"`
+	Type  string `json:"type" binding:"required"`
+	Queue string `json:"queue" binding:"required"`
+	State string `json:"state" binding:"required"`
 }
 
 func mapEnqueueResult(result jobs.EnqueueResult) EnqueueResponse {
@@ -33,19 +33,19 @@ func mapEnqueueResult(result jobs.EnqueueResult) EnqueueResponse {
 }
 
 type ListResponse struct {
-	Success bool        `json:"success"`
-	Data    []Response  `json:"data"`
-	Meta    *httpx.Meta `json:"meta,omitempty"`
+	Success bool        `json:"success" binding:"required"`
+	Data    []Response  `json:"data" binding:"required"`
+	Meta    *httpx.Meta `json:"meta" binding:"required"`
 }
 
 type ItemResponse struct {
-	Success bool        `json:"success"`
-	Data    Response    `json:"data"`
-	Meta    *httpx.Meta `json:"meta,omitempty"`
+	Success bool        `json:"success" binding:"required"`
+	Data    Response    `json:"data" binding:"required"`
+	Meta    *httpx.Meta `json:"meta" binding:"required"`
 }
 
 type EnqueueItemResponse struct {
-	Success bool            `json:"success"`
-	Data    EnqueueResponse `json:"data"`
-	Meta    *httpx.Meta     `json:"meta,omitempty"`
+	Success bool            `json:"success" binding:"required"`
+	Data    EnqueueResponse `json:"data" binding:"required"`
+	Meta    *httpx.Meta     `json:"meta" binding:"required"`
 }

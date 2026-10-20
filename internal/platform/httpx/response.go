@@ -11,20 +11,20 @@ import (
 )
 
 type SuccessResponse struct {
-	Success bool  `json:"success"`
-	Data    any   `json:"data"`
-	Meta    *Meta `json:"meta,omitempty"`
+	Success bool  `json:"success" binding:"required"`
+	Data    any   `json:"data" binding:"required"`
+	Meta    *Meta `json:"meta" binding:"required"`
 }
 
 type ErrorResponse struct {
-	Success   bool   `json:"success"`
-	Code      string `json:"code"`
-	Message   string `json:"message"`
-	RequestID string `json:"request_id,omitempty"`
+	Success   bool    `json:"success" binding:"required"`
+	Code      string  `json:"code" binding:"required"`
+	Message   string  `json:"message" binding:"required"`
+	RequestID *string `json:"request_id" binding:"required" extensions:"x-nullable"`
 }
 
 type Meta struct {
-	RequestID string `json:"request_id,omitempty"`
+	RequestID *string `json:"request_id" binding:"required" extensions:"x-nullable"`
 }
 
 func Success(c *gin.Context, statusCode int, data any) {
@@ -32,6 +32,18 @@ func Success(c *gin.Context, statusCode int, data any) {
 		Success: true,
 		Data:    data,
 		Meta:    requestMeta(c),
+	})
+}
+
+func SuccessWithMeta(c *gin.Context, statusCode int, data any, meta any) {
+	c.JSON(statusCode, struct {
+		Success bool `json:"success"`
+		Data    any  `json:"data"`
+		Meta    any  `json:"meta"`
+	}{
+		Success: true,
+		Data:    data,
+		Meta:    meta,
 	})
 }
 
@@ -66,7 +78,7 @@ func writeErrorResponse(c *gin.Context, statusCode int, code, message string) {
 		Success:   false,
 		Code:      code,
 		Message:   message,
-		RequestID: requestIDFromContext(c),
+		RequestID: requestIDPointer(c),
 	})
 }
 
@@ -138,6 +150,12 @@ func messageForCode(code string) string {
 		return errorconst.AuthInvalidContextMessage
 	case errorconst.AuthInsufficientPermissions:
 		return errorconst.AuthInsufficientPermissionsMessage
+	case errorconst.CatalogInvalidCursor:
+		return errorconst.CatalogInvalidCursorMessage
+	case errorconst.CatalogInvalidSort:
+		return errorconst.CatalogInvalidSortMessage
+	case errorconst.CatalogProductNotFound:
+		return errorconst.CatalogProductNotFoundMessage
 	default:
 		return ""
 	}
@@ -149,7 +167,15 @@ func requestMeta(c *gin.Context) *Meta {
 		return nil
 	}
 
-	return &Meta{RequestID: requestID}
+	return &Meta{RequestID: requestIDPointer(c)}
+}
+
+func requestIDPointer(c *gin.Context) *string {
+	requestID := requestIDFromContext(c)
+	if requestID == "" {
+		return nil
+	}
+	return &requestID
 }
 
 func requestIDFromContext(c *gin.Context) string {

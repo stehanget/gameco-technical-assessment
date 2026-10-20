@@ -22,4 +22,8 @@ const (
 	AuthMissingContextMessage          = "missing auth context"
 	AuthInvalidContextMessage          = "invalid auth context"
 	AuthInsufficientPermissionsMessage = "insufficient permissions"
+
+	CatalogInvalidCursorMessage   = "invalid catalog cursor"
+	CatalogInvalidSortMessage     = "invalid catalog sorting"
+	CatalogProductNotFoundMessage = "product not found"
 )

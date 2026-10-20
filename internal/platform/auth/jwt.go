@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	platformclock "gameco-technical-assessment/internal/platform/clock"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -11,14 +13,22 @@ import (
 type JWTManager struct {
 	current  []byte
 	previous [][]byte
+	clock    platformclock.Clock
 }
 
 func NewJWTManager(currentSecret string, previousSecrets ...string) *JWTManager {
+	return NewJWTManagerWithClock(currentSecret, platformclock.System{}, previousSecrets...)
+}
+
+func NewJWTManagerWithClock(currentSecret string, timeSource platformclock.Clock, previousSecrets ...string) *JWTManager {
+	if timeSource == nil {
+		timeSource = platformclock.System{}
+	}
 	previous := make([][]byte, 0, len(previousSecrets))
 	for _, secret := range previousSecrets {
 		previous = append(previous, []byte(secret))
 	}
-	return &JWTManager{current: []byte(currentSecret), previous: previous}
+	return &JWTManager{current: []byte(currentSecret), previous: previous, clock: timeSource}
 }
 
 func (m *JWTManager) GenerateAccessToken(userID, tokenID string, ttl time.Duration) (string, error) {
@@ -26,7 +36,7 @@ func (m *JWTManager) GenerateAccessToken(userID, tokenID string, ttl time.Durati
 		return "", fmt.Errorf("current JWT signing key is not configured")
 	}
 
-	now := time.Now()
+	now := m.clock.Now()
 	if tokenID == "" {
 		tokenID = uuid.NewString()
 	}

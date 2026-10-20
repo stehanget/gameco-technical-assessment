@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	platformclock "gameco-technical-assessment/internal/platform/clock"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -64,5 +66,22 @@ func TestJWTManagerSupportsPreviousSecrets(t *testing.T) {
 	withoutPrevious := NewJWTManager("new-secret")
 	if _, err := withoutPrevious.ParseAccessToken(token); err == nil {
 		t.Fatal("token signed by removed previous secret must be rejected")
+	}
+}
+
+func TestJWTManagerUsesInjectedClock(t *testing.T) {
+	issuedAt := time.Date(2026, 10, 21, 10, 15, 30, 0, time.UTC)
+	manager := NewJWTManagerWithClock("secret", platformclock.Fixed{Current: issuedAt})
+	token, err := manager.GenerateAccessToken("42", "fixed-session", time.Minute)
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	claims, err := manager.ParseAccessToken(token)
+	if err != nil {
+		t.Fatalf("parse token: %v", err)
+	}
+	if !claims.IssuedAt.Time.Equal(issuedAt) {
+		t.Fatalf("issued at = %s, want %s", claims.IssuedAt.Time, issuedAt)
 	}
 }

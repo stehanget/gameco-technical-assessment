@@ -66,7 +66,7 @@ func TestHandleErrorMapsKindToStablePublicContract(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/error", nil)
 			router.ServeHTTP(record, request)
 
-			expected := `{"success":false,"code":"` + testCase.code + `","message":"` + testCase.message + `"}`
+			expected := `{"success":false,"code":"` + testCase.code + `","message":"` + testCase.message + `","request_id":null}`
 			if record.Body.String() != expected {
 				t.Fatalf("expected %s, got %s", expected, record.Body.String())
 			}
@@ -95,7 +95,7 @@ func TestHandleErrorUsesTypedPublicCodeAndSafeMessage(t *testing.T) {
 	if record.Code != http.StatusConflict {
 		t.Fatalf("expected status 409, got %d", record.Code)
 	}
-	if record.Body.String() != `{"success":false,"code":"auth.email_already_registered","message":"email is already registered"}` {
+	if record.Body.String() != `{"success":false,"code":"auth.email_already_registered","message":"email is already registered","request_id":null}` {
 		t.Fatalf("unexpected typed error response: %s", record.Body.String())
 	}
 }

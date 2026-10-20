@@ -22,4 +22,8 @@ const (
 	AuthMissingContext          = "auth.missing_context"
 	AuthInvalidContext          = "auth.invalid_context"
 	AuthInsufficientPermissions = "auth.insufficient_permissions"
+
+	CatalogInvalidCursor   = "catalog.invalid_cursor"
+	CatalogInvalidSort     = "catalog.invalid_sort"
+	CatalogProductNotFound = "catalog.product_not_found"
 )

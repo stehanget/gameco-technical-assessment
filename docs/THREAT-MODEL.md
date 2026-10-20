@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, and an auth E2E flow. The marketplace tables and transaction endpoints are currently documented as the next implementation scope; they must not be treated as implemented merely because they appear in the DBML.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, and an auth E2E flow. The marketplace tables exist, while marketplace runtime endpoints—including the public catalog read API and transaction endpoints—are still implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
 
 ## Assets
 
@@ -85,9 +85,17 @@ The repository currently has implemented authentication, database-backed session
 
 **Risk:** Login, register, refresh, checkout, webhook, list, or search requests consume excessive CPU, database, Redis, or external-provider capacity.
 
-**Mitigations:** Redis-backed shared rate limiting, request body limits, pagination limits, bounded query filters, timeout-aware external calls, and endpoint-specific policies.
+**Mitigations:** Redis-backed shared rate limiting, request body limits, bounded query filters, cursor page-size limits, indexed catalog search, timeout-aware external calls, and endpoint-specific policies.
 
-**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. A request selects one bucket; session-specific limiting is intentionally not used. Body-size limits, checkout limits, and payment-provider circuit breaking are still required for the marketplace scope.
+**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. A request selects one bucket; session-specific limiting is intentionally not used. The accepted catalog design requires bounded `per_page`, opaque cursor traversal, and PostgreSQL trigram indexes for name/description search; the catalog handlers and search migration are not implemented yet. Body-size limits, checkout limits, and payment-provider circuit breaking are still required for the marketplace scope.
+
+### Public catalog query safety
+
+**Risk:** A guest abuses broad search, deep pagination, or dynamic sorting to consume database CPU and expose hidden catalog rows.
+
+**Mitigation required:** Keep the public query surface read-only; expose only allow-listed `sort_by` and `sort_order` values; use parameterized filters; cap `per_page`; use opaque cursor pagination with a deterministic tie-breaker; search only active, non-deleted products; and add PostgreSQL `pg_trgm` GIN indexes for the name and description search path. Do not expose internal IDs in cursors or responses as a public contract.
+
+**Current status:** The decisions are recorded in `docs/ADR/0006-public-catalog-read-api.md`. Runtime query validation, cursor verification, trigram migration, catalog handlers, and focused abuse/regression tests remain pending.
 
 ### API5:2023 Broken Function Level Authorization
 
@@ -181,6 +189,13 @@ The repository currently has implemented authentication, database-backed session
 - **Mitigation:** Do not fetch arbitrary URLs; use allow-listed remote media with DNS/IP/redirect validation if this feature is introduced.
 - **Residual risk:** No image-fetching feature exists today.
 
+### 7. Abuse public catalog search and pagination
+
+- **Attack:** Send repeated broad substring searches, malformed cursors, or large page-size values to force expensive scans or repeatedly traverse the catalog.
+- **Impact:** Database resource exhaustion, elevated latency, or accidental exposure of inactive/soft-deleted products.
+- **Mitigation:** Apply the shared rate limiter, validate and cap `per_page`, reject invalid cursor/filter combinations, restrict sorting to an allow-list, use parameterized queries, add `pg_trgm` GIN indexes for name and description search, and enforce `active` plus `deleted_at IS NULL` visibility predicates in the repository query.
+- **Residual risk:** The catalog runtime implementation and its query/load tests are not yet present; index selectivity and search cost must be measured after representative data is available.
+
 ## Logging and privacy rules
 
 - Never log passwords, access tokens, refresh tokens, JWT signing secrets, webhook secrets, or payment-card data.
@@ -191,7 +206,7 @@ The repository currently has implemented authentication, database-backed session
 
 ## What is not safe yet
 
-1. Marketplace endpoints, object-level authorization, checkout locking, idempotency, webhook verification, and critical transaction tests are not implemented yet.
+1. Marketplace endpoints, including the public catalog read API, object-level authorization, checkout locking, idempotency, webhook verification, and critical transaction tests are not implemented yet.
 2. `user_login_security_states` is agreed in DBML but not yet present in a migration or login flow.
 3. JWT key rotation is implemented through `APP_JWT_SECRET` plus a bounded `APP_JWT_PREVIOUS_SECRETS` verification list; secret-manager integration and automated rotation orchestration are not implemented.
 4. Swagger is available from the application router and needs an explicit production exposure decision.

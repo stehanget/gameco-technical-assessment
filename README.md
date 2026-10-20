@@ -216,6 +216,7 @@ scripts/                     # repository helper scripts
 - [Module template](docs/module-template.md) — guide for adding a new module/feature properly
 - [Migrations guide](docs/migrations-guide.md) — how to create, write, run, and review migrations
 - [Testing guide](docs/testing-guide.md) — how to run and add tests in this repo
+- [Coding conventions](docs/CODING-CONVENTIONS.md) — cross-cutting rules for Go, API contracts, SQL, timestamps, security, migrations, and tests
 - [Identifier conventions](docs/identifier-conventions.md) — internal IDs, public UUIDv7 identifiers, JWT JTI, and refresh-token storage
 - [Database schema](docs/schema.dbml) — current auth schema and planned marketplace domain model
 - [Threat model](docs/THREAT-MODEL.md) — OWASP API risks, attack scenarios, mitigations, and residual risks

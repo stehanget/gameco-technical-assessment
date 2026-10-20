@@ -2,6 +2,7 @@ package app
 
 import (
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
+	modulecatalog "gameco-technical-assessment/internal/modules/catalog"
 	modulehealth "gameco-technical-assessment/internal/modules/health"
 	"gameco-technical-assessment/internal/platform/middleware"
 
@@ -33,7 +34,7 @@ func NewRouter(container *Container) *gin.Engine {
 	modulehealth.RegisterRoutes(router, modulehealth.NewHandler())
 
 	api := router.Group("/api/v1")
-	api.Use(middleware.RateLimit(container.Redis, middleware.RateLimitPolicySet{
+	api.Use(middleware.RateLimitWithClock(container.Redis, middleware.RateLimitPolicySet{
 		Anonymous: middleware.RateLimitPolicy{
 			Name:   "global-ip",
 			Limit:  container.Config.RateLimit.Anonymous.Limit,
@@ -44,7 +45,7 @@ func NewRouter(container *Container) *gin.Engine {
 			Limit:  container.Config.RateLimit.Authenticated.Limit,
 			Window: container.Config.RateLimit.Authenticated.Window,
 		},
-	}, container.JWTSigner))
+	}, container.JWTSigner, container.Clock))
 
 	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
 		DB:        container.DB,
@@ -52,7 +53,9 @@ func NewRouter(container *Container) *gin.Engine {
 		JWTSigner: container.JWTSigner,
 		AppConfig: container.Config.App,
 		RateLimit: container.Config.RateLimit,
+		Clock:     container.Clock,
 	})
+	modulecatalog.RegisterRoutes(api, modulecatalog.RouteDependencies{DB: container.DB})
 
 	return router
 }

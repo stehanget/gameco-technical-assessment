@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"gameco-technical-assessment/internal/config"
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/constants/role"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
+	platformclock "gameco-technical-assessment/internal/platform/clock"
 	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/identifier"
 
@@ -23,6 +23,7 @@ type Service struct {
 	redis      *redis.Client
 	jwtManager *platformauth.JWTManager
 	config     config.AppConfig
+	clock      platformclock.Clock
 }
 
 type SessionMetadata struct {
@@ -31,7 +32,14 @@ type SessionMetadata struct {
 }
 
 func NewService(repository *Repository, redisClient *redis.Client, jwtManager *platformauth.JWTManager, cfg config.AppConfig) *Service {
-	return &Service{repository: repository, redis: redisClient, jwtManager: jwtManager, config: cfg}
+	return NewServiceWithClock(repository, redisClient, jwtManager, cfg, platformclock.System{})
+}
+
+func NewServiceWithClock(repository *Repository, redisClient *redis.Client, jwtManager *platformauth.JWTManager, cfg config.AppConfig, timeSource platformclock.Clock) *Service {
+	if timeSource == nil {
+		timeSource = platformclock.System{}
+	}
+	return &Service{repository: repository, redis: redisClient, jwtManager: jwtManager, config: cfg, clock: timeSource}
 }
 
 func (s *Service) Register(ctx context.Context, input RegisterRequest, metadata SessionMetadata) (TokenResponse, error) {
@@ -120,7 +128,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 		JTI: jti, RefreshHash: newRefreshHash,
 		Roles: access.Roles, Permissions: access.Permissions,
 		UserAgent: metadata.UserAgent, IPAddress: metadata.IPAddress,
-		ExpiresAt: time.Now().Add(s.config.RefreshTokenTTL),
+		ExpiresAt: s.clock.Now().Add(s.config.RefreshTokenTTL),
 	}
 	if _, err := s.repository.RotateRefreshSession(ctx, refreshHash, replacement); err != nil {
 		if errors.Is(err, ErrRefreshTokenReuse) {
@@ -192,7 +200,7 @@ func (s *Service) issueTokenPair(ctx context.Context, user User, metadata Sessio
 		UserID: user.ID, JTI: jti, RefreshHash: refreshHash,
 		Roles: access.Roles, Permissions: access.Permissions,
 		UserAgent: metadata.UserAgent, IPAddress: metadata.IPAddress,
-		ExpiresAt: time.Now().Add(s.config.RefreshTokenTTL),
+		ExpiresAt: s.clock.Now().Add(s.config.RefreshTokenTTL),
 	}); err != nil {
 		return TokenResponse{}, err
 	}
