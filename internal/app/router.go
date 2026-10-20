@@ -1,13 +1,13 @@
 package app
 
 import (
-	"context"
-
+	"gameco-technical-assessment/internal/config"
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
-	"gameco-technical-assessment/internal/modules/example"
-	"gameco-technical-assessment/internal/modules/health"
+	moduleexample "gameco-technical-assessment/internal/modules/example"
+	modulehealth "gameco-technical-assessment/internal/modules/health"
 	"gameco-technical-assessment/internal/platform/middleware"
 
+	"github.com/gin-contrib/cors"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -21,6 +21,7 @@ func NewRouter(container *Container) *gin.Engine {
 
 	router := gin.New()
 	router.Use(middleware.RequestID())
+	router.Use(newCORSMiddleware())
 	router.Use(middleware.Recovery(container.Logger))
 	router.Use(middleware.Logging(container.Logger))
 	swaggerUI := ginSwagger.WrapHandler(
@@ -30,29 +31,21 @@ func NewRouter(container *Container) *gin.Engine {
 	router.GET("/swagger/*any", swaggerUI)
 
 	api := router.Group("/api/v1")
-	health.RegisterRoutes(api, health.NewHandler())
-	registerAuthRoutes(api, container)
-	registerExampleRoutes(api, container)
+	modulehealth.RegisterRoutes(api, modulehealth.NewHandler())
+	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
+		DB:        container.DB,
+		Redis:     container.Redis,
+		JWTSigner: container.JWTSigner,
+		AppConfig: container.Config.App,
+	})
+	moduleexample.RegisterRoutes(api, moduleexample.RouteDependencies{
+		DB:   container.DB,
+		Jobs: container.Jobs,
+	})
 
 	return router
 }
 
-func registerAuthRoutes(api *gin.RouterGroup, container *Container) {
-	authRepository := moduleauth.NewRepository(container.DB)
-	service := moduleauth.NewService(authRepository, container.Redis, container.JWTSigner, container.Config.App)
-	handler := moduleauth.NewHandler(service)
-	moduleauth.RegisterRoutes(api, handler, container.JWTSigner, func(ctx context.Context, jti string) ([]string, []string, error) {
-		access, err := service.ValidateSession(ctx, jti)
-		if err != nil {
-			return nil, nil, err
-		}
-		return access.Roles, access.Permissions, nil
-	})
-}
-
-func registerExampleRoutes(api *gin.RouterGroup, container *Container) {
-	repository := example.NewRepository(container.DB)
-	service := example.NewService(repository, container.Jobs)
-	handler := example.NewHandler(service)
-	example.RegisterRoutes(api, handler)
+func newCORSMiddleware() gin.HandlerFunc {
+	return cors.New(config.CORSConfig())
 }

@@ -1,8 +1,22 @@
 package example
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
-func RegisterRoutes(router *gin.RouterGroup, handler *Handler) {
+	"gameco-technical-assessment/internal/workers/jobs"
+)
+
+type RouteDependencies struct {
+	DB   *gorm.DB
+	Jobs *jobs.Enqueuer
+}
+
+func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
+	repository := NewRepository(deps.DB)
+	service := NewService(repository, deps.Jobs)
+	handler := NewHandler(service)
+
 	group := router.Group("/examples")
 	group.GET("", handler.List)
 	group.POST("", handler.Create)
