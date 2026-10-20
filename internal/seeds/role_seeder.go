@@ -3,8 +3,8 @@ package seeds
 import (
 	"errors"
 
+	"gameco-technical-assessment/internal/constants/role"
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
-	"gameco-technical-assessment/internal/modules/auth/role"
 
 	"gorm.io/gorm"
 )

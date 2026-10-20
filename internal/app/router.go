@@ -3,7 +3,6 @@ package app
 import (
 	"gameco-technical-assessment/internal/config"
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
-	moduleexample "gameco-technical-assessment/internal/modules/example"
 	modulehealth "gameco-technical-assessment/internal/modules/health"
 	"gameco-technical-assessment/internal/platform/middleware"
 
@@ -30,19 +29,22 @@ func NewRouter(container *Container) *gin.Engine {
 	)
 	router.GET("/swagger/*any", swaggerUI)
 
+	modulehealth.RegisterRoutes(router.Group("/api/v1"), modulehealth.NewHandler())
 	api := router.Group("/api/v1")
-	modulehealth.RegisterRoutes(api, modulehealth.NewHandler())
+	if container.Config.RateLimit.Enabled {
+		api.Use(middleware.RateLimit(container.Redis, middleware.RateLimitPolicy{
+			Name:   "api",
+			Limit:  container.Config.RateLimit.Default.Limit,
+			Window: container.Config.RateLimit.Default.Window,
+		}))
+	}
 	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
 		DB:        container.DB,
 		Redis:     container.Redis,
 		JWTSigner: container.JWTSigner,
 		AppConfig: container.Config.App,
+		RateLimit: container.Config.RateLimit,
 	})
-	moduleexample.RegisterRoutes(api, moduleexample.RouteDependencies{
-		DB:   container.DB,
-		Jobs: container.Jobs,
-	})
-
 	return router
 }
 

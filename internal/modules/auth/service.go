@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"gameco-technical-assessment/internal/config"
-	"gameco-technical-assessment/internal/modules/auth/role"
+	"gameco-technical-assessment/internal/constants/role"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/identifier"
 

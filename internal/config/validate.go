@@ -31,5 +31,11 @@ func (c Config) Validate() error {
 		return fmt.Errorf("REDIS_ADDR is required")
 	}
 
+	if c.RateLimit.Enabled {
+		if c.RateLimit.Default.Limit <= 0 || c.RateLimit.Default.Window <= 0 {
+			return fmt.Errorf("default rate limit limit and window must be greater than zero")
+		}
+	}
+
 	return nil
 }

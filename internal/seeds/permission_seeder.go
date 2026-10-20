@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
+	"gameco-technical-assessment/internal/constants/permission"
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
-	"gameco-technical-assessment/internal/modules/auth/permission"
 
 	"gorm.io/gorm"
 )
