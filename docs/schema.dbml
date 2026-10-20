@@ -3,6 +3,41 @@ Project gameco_technical_assessment {
   Note: 'Marketplace technical-assessment backend. Internal primary and foreign keys use BIGINT; externally exposed resource identifiers use application-generated UUIDv7 public_id values. Tenant and membership tables are intentionally out of scope.'
 }
 
+Enum product_status {
+  draft
+  active
+  inactive
+}
+
+Enum cart_status {
+  active
+  checked_out
+  abandoned
+}
+
+Enum order_status {
+  pending_payment
+  payment_failed
+  paid
+  processing
+  completed
+  cancelled
+}
+
+Enum payment_status {
+  pending
+  paid
+  failed
+  expired
+}
+
+Enum stock_movement_type {
+  checkout
+  cancellation
+  manual_adjustment
+  restock
+}
+
 Table users {
   id bigint [pk, increment]
   public_id uuid [not null, unique, note: 'Application-generated UUIDv7 public identifier.']
@@ -105,7 +140,7 @@ Table products {
   description text [not null]
   price_amount bigint [not null, note: 'Integer minor-unit amount; floating point is not used for money.']
   stock_quantity int [not null, default: 0]
-  status varchar(32) [not null, note: 'Normal lifecycle status, for example draft, active, or inactive.']
+  status product_status [not null, note: 'Native PostgreSQL enum: draft, active, or inactive.']
   deleted_at timestamptz [note: 'Nullable soft-delete marker. Deleted products are excluded from public catalog and new transactions.']
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
@@ -123,7 +158,7 @@ Table carts {
   id bigint [pk, increment]
   public_id uuid [not null, unique, note: 'Application-generated UUIDv7 public identifier.']
   buyer_id bigint [not null]
-  status varchar(32) [not null, note: 'Cart lifecycle, for example active, checked_out, or abandoned.']
+  status cart_status [not null, note: 'Native PostgreSQL enum: active, checked_out, or abandoned.']
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
 
@@ -153,7 +188,7 @@ Table orders {
   id bigint [pk, increment]
   public_id uuid [not null, unique, note: 'Application-generated UUIDv7 public identifier.']
   buyer_id bigint [not null]
-  status varchar(32) [not null, note: 'At minimum pending_payment, payment_failed, paid, processing, completed, and cancelled.']
+  status order_status [not null, note: 'Native PostgreSQL enum: pending_payment, payment_failed, paid, processing, completed, or cancelled.']
   total_amount bigint [not null, note: 'Integer minor-unit amount.']
   payment_reference varchar(128) [not null, unique]
   payment_expires_at timestamptz
@@ -213,7 +248,7 @@ Table payments {
   order_id bigint [not null, unique]
   payment_reference varchar(128) [not null, unique]
   provider varchar(64) [not null]
-  status varchar(32) [not null, note: 'At minimum pending, paid, failed, or expired.']
+  status payment_status [not null, note: 'Native PostgreSQL enum: pending, paid, failed, or expired.']
   amount bigint [not null, note: 'Integer minor-unit amount.']
   expires_at timestamptz
   paid_at timestamptz
@@ -273,7 +308,7 @@ Table stock_movements {
   order_id bigint
   order_item_id bigint
   actor_user_id bigint
-  movement_type varchar(64) [not null, note: 'For example checkout, cancellation, manual_adjustment, or restock.']
+  movement_type stock_movement_type [not null, note: 'Native PostgreSQL enum: checkout, cancellation, manual_adjustment, or restock.']
   quantity_delta int [not null, note: 'Signed quantity change; negative values consume stock.']
   stock_before int [not null]
   stock_after int [not null]
