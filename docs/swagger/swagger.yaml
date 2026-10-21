@@ -125,6 +125,90 @@ definitions:
     - public_id
     - roles
     type: object
+  cart.CartResponse:
+    properties:
+      created_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/cart.ItemResponse'
+        type: array
+      public_id:
+        type: string
+      status:
+        type: string
+      total_amount:
+        type: integer
+      unavailable_items:
+        items:
+          $ref: '#/definitions/cart.ItemResponse'
+        type: array
+      updated_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+    required:
+    - created_at
+    - items
+    - public_id
+    - status
+    - total_amount
+    - unavailable_items
+    - updated_at
+    type: object
+  cart.ItemResponse:
+    properties:
+      availability:
+        type: string
+      name:
+        type: string
+      price_amount:
+        type: integer
+      product_public_id:
+        type: string
+      quantity:
+        type: integer
+      stock_quantity:
+        type: integer
+      subtotal_amount:
+        type: integer
+      unavailable_reason:
+        type: string
+        x-nullable: true
+    required:
+    - availability
+    - name
+    - price_amount
+    - product_public_id
+    - quantity
+    - stock_quantity
+    - subtotal_amount
+    - unavailable_reason
+    type: object
+  cart.Response:
+    properties:
+      data:
+        $ref: '#/definitions/cart.CartResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  cart.SetItemRequest:
+    properties:
+      quantity:
+        maximum: 999
+        minimum: 1
+        type: integer
+    required:
+    - quantity
+    type: object
   catalog.CategoryOptionResponse:
     properties:
       name:
@@ -603,6 +687,125 @@ paths:
       summary: Register user
       tags:
       - auth
+  /api/v1/cart:
+    get:
+      description: Returns the authenticated buyer's active cart and current product
+        prices.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cart.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get active cart
+      tags:
+      - cart
+  /api/v1/cart/items/{product_public_id}:
+    delete:
+      description: Removes a product from the authenticated buyer's active cart.
+      parameters:
+      - description: Product public identifier
+        format: uuid
+        in: path
+        name: product_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cart.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove cart item
+      tags:
+      - cart
+    put:
+      consumes:
+      - application/json
+      description: Adds a product to the active cart or replaces its quantity.
+      parameters:
+      - description: Product public identifier
+        format: uuid
+        in: path
+        name: product_public_id
+        required: true
+        type: string
+      - description: Cart item quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cart.SetItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cart.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set cart item quantity
+      tags:
+      - cart
   /api/v1/categories/options:
     get:
       description: Lists canonical categories for public catalog filters and seller

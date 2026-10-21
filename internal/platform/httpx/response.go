@@ -63,7 +63,7 @@ func HandleError(c *gin.Context, err error) {
 	if code == "" {
 		code = fallbackCode
 	}
-	message := messageForCode(code)
+	message := errorconst.MessageForCode(code)
 	if message == "" {
 		message = fallbackMessage
 	}
@@ -121,43 +121,6 @@ func errorContractForKind(kind faults.Kind) (int, string, string) {
 		return http.StatusServiceUnavailable, errorconst.ServiceUnavailable, errorconst.ServiceUnavailableMessage
 	default:
 		return http.StatusInternalServerError, errorconst.InternalServerError, errorconst.InternalServerErrorMessage
-	}
-}
-
-func messageForCode(code string) string {
-	switch code {
-	case errorconst.AuthEmailAlreadyRegistered:
-		return errorconst.AuthEmailAlreadyRegisteredMessage
-	case errorconst.AuthInvalidCredentials:
-		return errorconst.AuthInvalidCredentialsMessage
-	case errorconst.AuthRefreshTokenReused:
-		return errorconst.AuthRefreshTokenReusedMessage
-	case errorconst.AuthUserNotFound:
-		return errorconst.AuthUserNotFoundMessage
-	case errorconst.AuthNoAssignedRoles:
-		return errorconst.AuthNoAssignedRolesMessage
-	case errorconst.AuthMissingAuthorization:
-		return errorconst.AuthMissingAuthorizationMessage
-	case errorconst.AuthInvalidAuthorization:
-		return errorconst.AuthInvalidAuthorizationMessage
-	case errorconst.AuthInvalidToken:
-		return errorconst.AuthInvalidTokenMessage
-	case errorconst.AuthSessionInvalid:
-		return errorconst.AuthSessionInvalidMessage
-	case errorconst.AuthMissingContext:
-		return errorconst.AuthMissingContextMessage
-	case errorconst.AuthInvalidContext:
-		return errorconst.AuthInvalidContextMessage
-	case errorconst.AuthInsufficientPermissions:
-		return errorconst.AuthInsufficientPermissionsMessage
-	case errorconst.CatalogInvalidCursor:
-		return errorconst.CatalogInvalidCursorMessage
-	case errorconst.CatalogInvalidSort:
-		return errorconst.CatalogInvalidSortMessage
-	case errorconst.CatalogProductNotFound:
-		return errorconst.CatalogProductNotFoundMessage
-	default:
-		return ""
 	}
 }
 

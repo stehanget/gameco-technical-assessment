@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, and seller product management. Cart, checkout, order, payment, stock-ledger, and audit runtime flows remain implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, and buyer cart item management. Checkout, order, payment, stock-ledger, and audit runtime flows remain implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
 
 ## Assets
 
