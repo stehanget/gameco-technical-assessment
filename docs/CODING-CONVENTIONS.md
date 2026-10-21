@@ -135,9 +135,9 @@ Use the centralized error flow:
 faults.New(...) -> httpx.HandleError(...)
 ```
 
-- Create typed application errors with `faults.New(...)`.
-- Put public error codes in `internal/constants/error/codes.go`.
-- Put public messages in `internal/constants/error/messages.go`.
+- Create typed application errors with `faults.New(errorconst.SomeDefinition, cause)`.
+- Define each public error once as a `faults.Definition` in `internal/constants/error/definitions.go`; the definition owns its code, kind, and safe default message.
+- Do not add domain-error mappings to `internal/platform/httpx/response.go`; that layer only maps generic fault kinds to HTTP statuses and renders the definition metadata.
 - Never send `err.Error()` or database/driver details directly to clients.
 - Preserve request IDs in success metadata and error responses where middleware has created one.
 - Keep HTTP status mapping centralized; handlers should not duplicate error-to-status logic.

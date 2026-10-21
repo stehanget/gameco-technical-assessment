@@ -58,14 +58,14 @@ func HandleError(c *gin.Context, err error) {
 		return
 	}
 
-	statusCode, fallbackCode, fallbackMessage := errorContractForKind(appErr.Kind)
+	statusCode, fallback := errorContractForKind(appErr.Kind)
 	code := appErr.Code
 	if code == "" {
-		code = fallbackCode
+		code = fallback.Code
 	}
-	message := errorconst.MessageForCode(code)
+	message := appErr.Message
 	if message == "" {
-		message = fallbackMessage
+		message = fallback.Message
 	}
 	if err != nil {
 		_ = c.Error(err)
@@ -83,44 +83,49 @@ func writeErrorResponse(c *gin.Context, statusCode int, code, message string) {
 }
 
 func errorContract(statusCode int) (string, string) {
-	switch statusCode {
-	case http.StatusBadRequest:
-		return errorconst.InvalidRequest, errorconst.InvalidRequestMessage
-	case http.StatusUnauthorized:
-		return errorconst.Unauthorized, errorconst.UnauthorizedMessage
-	case http.StatusForbidden:
-		return errorconst.Forbidden, errorconst.ForbiddenMessage
-	case http.StatusNotFound:
-		return errorconst.NotFound, errorconst.NotFoundMessage
-	case http.StatusConflict:
-		return errorconst.Conflict, errorconst.ConflictMessage
-	case http.StatusTooManyRequests:
-		return errorconst.RateLimitExceeded, errorconst.RateLimitExceededMessage
-	case http.StatusServiceUnavailable:
-		return errorconst.ServiceUnavailable, errorconst.ServiceUnavailableMessage
+	definition := definitionForStatus(statusCode)
+	return definition.Code, definition.Message
+}
+
+func errorContractForKind(kind faults.Kind) (int, faults.Definition) {
+	switch kind {
+	case faults.KindInvalidInput:
+		return http.StatusBadRequest, errorconst.InvalidRequest
+	case faults.KindUnauthenticated:
+		return http.StatusUnauthorized, errorconst.Unauthorized
+	case faults.KindForbidden:
+		return http.StatusForbidden, errorconst.Forbidden
+	case faults.KindNotFound:
+		return http.StatusNotFound, errorconst.NotFound
+	case faults.KindConflict:
+		return http.StatusConflict, errorconst.Conflict
+	case faults.KindRateLimit:
+		return http.StatusTooManyRequests, errorconst.RateLimitExceeded
+	case faults.KindUnavailable:
+		return http.StatusServiceUnavailable, errorconst.ServiceUnavailable
 	default:
-		return errorconst.InternalServerError, errorconst.InternalServerErrorMessage
+		return http.StatusInternalServerError, errorconst.InternalServerError
 	}
 }
 
-func errorContractForKind(kind faults.Kind) (int, string, string) {
-	switch kind {
-	case faults.KindInvalidInput:
-		return http.StatusBadRequest, errorconst.InvalidRequest, errorconst.InvalidRequestMessage
-	case faults.KindUnauthenticated:
-		return http.StatusUnauthorized, errorconst.Unauthorized, errorconst.UnauthorizedMessage
-	case faults.KindForbidden:
-		return http.StatusForbidden, errorconst.Forbidden, errorconst.ForbiddenMessage
-	case faults.KindNotFound:
-		return http.StatusNotFound, errorconst.NotFound, errorconst.NotFoundMessage
-	case faults.KindConflict:
-		return http.StatusConflict, errorconst.Conflict, errorconst.ConflictMessage
-	case faults.KindRateLimit:
-		return http.StatusTooManyRequests, errorconst.RateLimitExceeded, errorconst.RateLimitExceededMessage
-	case faults.KindUnavailable:
-		return http.StatusServiceUnavailable, errorconst.ServiceUnavailable, errorconst.ServiceUnavailableMessage
+func definitionForStatus(statusCode int) faults.Definition {
+	switch statusCode {
+	case http.StatusBadRequest:
+		return errorconst.InvalidRequest
+	case http.StatusUnauthorized:
+		return errorconst.Unauthorized
+	case http.StatusForbidden:
+		return errorconst.Forbidden
+	case http.StatusNotFound:
+		return errorconst.NotFound
+	case http.StatusConflict:
+		return errorconst.Conflict
+	case http.StatusTooManyRequests:
+		return errorconst.RateLimitExceeded
+	case http.StatusServiceUnavailable:
+		return errorconst.ServiceUnavailable
 	default:
-		return http.StatusInternalServerError, errorconst.InternalServerError, errorconst.InternalServerErrorMessage
+		return errorconst.InternalServerError
 	}
 }
 

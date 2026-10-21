@@ -32,7 +32,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) Register(c *gin.Context) {
 	var request RegisterRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var request LoginRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Refresh(c *gin.Context) {
 	var request RefreshRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 func (h *Handler) Logout(c *gin.Context) {
 	var request LogoutRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 
@@ -137,11 +137,11 @@ func (h *Handler) Logout(c *gin.Context) {
 func (h *Handler) Me(c *gin.Context) {
 	access, ok := middleware.ActorFromContext(c)
 	if !ok {
-		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
+		httpx.HandleError(c, faults.New(errorconst.AuthMissingContext, nil))
 		return
 	}
 	if access.UserID == 0 {
-		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
+		httpx.HandleError(c, faults.New(errorconst.AuthInvalidContext, nil))
 		return
 	}
 

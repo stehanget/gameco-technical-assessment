@@ -50,7 +50,7 @@ func (h *Handler) List(c *gin.Context) {
 func (h *Handler) Create(c *gin.Context) {
 	var request CreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *Handler) Create(c *gin.Context) {
 func (h *Handler) EnqueueCreate(c *gin.Context) {
 	var request CreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 

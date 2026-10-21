@@ -63,11 +63,7 @@ func TestLoggingClassifiesTypedErrorsWithoutLeakingCause(t *testing.T) {
 	router := gin.New()
 	router.Use(RequestID(), Logging(logger))
 	router.GET("/error", func(c *gin.Context) {
-		httpx.HandleError(c, faults.New(
-			faults.KindConflict,
-			errorconst.AuthEmailAlreadyRegistered,
-			errors.New("duplicate email password=secret"),
-		))
+		httpx.HandleError(c, faults.New(errorconst.AuthEmailAlreadyRegistered, errors.New("duplicate email password=secret")))
 	})
 
 	record := httptest.NewRecorder()
@@ -81,7 +77,7 @@ func TestLoggingClassifiesTypedErrorsWithoutLeakingCause(t *testing.T) {
 	if entry["level"] != "WARN" {
 		t.Fatalf("expected WARN level, got %#v", entry["level"])
 	}
-	if entry["error_code"] != errorconst.AuthEmailAlreadyRegistered {
+	if entry["error_code"] != errorconst.AuthEmailAlreadyRegistered.Code {
 		t.Fatalf("expected error_code, got %#v", entry["error_code"])
 	}
 	if entry["error_kind"] != string(faults.KindConflict) {

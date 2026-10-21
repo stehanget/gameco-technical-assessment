@@ -106,12 +106,12 @@ func (s *Service) List(ctx context.Context, request ListQuery) (listResult, erro
 func (s *Service) FindByPublicID(ctx context.Context, publicID string) (ProductResponse, error) {
 	parsed, err := uuid.Parse(publicID)
 	if err != nil {
-		return ProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		return ProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 	}
 	row, err := s.repository.FindByPublicID(ctx, parsed.String())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+			return ProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 		}
 		return ProductResponse{}, err
 	}
@@ -161,12 +161,12 @@ func (s *Service) FindSellerProductByPublicID(ctx context.Context, actor platfor
 	sellerID := actor.UserID
 	parsed, err := uuid.Parse(publicID)
 	if err != nil {
-		return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		return SellerProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 	}
 	row, err := s.repository.FindByPublicIDForSeller(ctx, sellerID, parsed.String())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+			return SellerProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 		}
 		return SellerProductResponse{}, err
 	}
@@ -192,7 +192,7 @@ func (s *Service) CreateProduct(ctx context.Context, actor platformauth.Actor, r
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return SellerProductResponse{}, err
 		}
-		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err)
+		return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, err)
 	}
 	publicID, err := identifier.NewPublicID()
 	if err != nil {
@@ -200,10 +200,10 @@ func (s *Service) CreateProduct(ctx context.Context, actor platformauth.Actor, r
 	}
 	product := &Product{PublicID: publicID, SellerID: sellerID, CategoryID: category.ID, Name: strings.TrimSpace(request.Name), Description: strings.TrimSpace(request.Description), PriceAmount: request.PriceAmount, StockQuantity: request.StockQuantity, Status: catalogconstants.ProductStatusActive}
 	if product.Name == "" || strings.TrimSpace(product.Description) == "" {
-		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if product.PriceAmount < 0 || product.StockQuantity < 0 {
-		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if err := s.repository.CreateProduct(ctx, product); err != nil {
 		return SellerProductResponse{}, err
@@ -215,12 +215,12 @@ func (s *Service) UpdateProduct(ctx context.Context, actor platformauth.Actor, p
 	sellerID := actor.UserID
 	parsed, err := uuid.Parse(publicID)
 	if err != nil {
-		return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		return SellerProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 	}
 	existing, err := s.repository.FindByPublicIDForSeller(ctx, sellerID, parsed.String())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+			return SellerProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 		}
 		return SellerProductResponse{}, err
 	}
@@ -251,19 +251,19 @@ func (s *Service) UpdateProduct(ctx context.Context, actor platformauth.Actor, p
 			if !errors.Is(categoryErr, gorm.ErrRecordNotFound) {
 				return SellerProductResponse{}, categoryErr
 			}
-			return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, categoryErr)
+			return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, categoryErr)
 		}
 		values["category_id"] = category.ID
 	}
 	if len(values) == 0 {
-		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if name == "" || description == "" || priceAmount < 0 || stockQuantity < 0 {
-		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if err := s.repository.UpdateProduct(ctx, sellerID, parsed.String(), values); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+			return SellerProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 		}
 		return SellerProductResponse{}, err
 	}
@@ -276,7 +276,7 @@ func normalizeListQuery(request ListQuery) (listParams, *cursorPosition, error) 
 		sortBy = defaultSortBy
 	}
 	if sortBy != "created_at" && sortBy != "name" && sortBy != "price" {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.CatalogInvalidSort, nil)
+		return listParams{}, nil, faults.New(errorconst.CatalogInvalidSort, nil)
 	}
 
 	sortOrder := request.SortOrder
@@ -284,7 +284,7 @@ func normalizeListQuery(request ListQuery) (listParams, *cursorPosition, error) 
 		sortOrder = defaultSortOrder
 	}
 	if sortOrder != "asc" && sortOrder != "desc" {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.CatalogInvalidSort, nil)
+		return listParams{}, nil, faults.New(errorconst.CatalogInvalidSort, nil)
 	}
 
 	perPage := request.PerPage
@@ -292,16 +292,16 @@ func normalizeListQuery(request ListQuery) (listParams, *cursorPosition, error) 
 		perPage = defaultPerPage
 	}
 	if perPage < 1 || perPage > maxPerPage {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return listParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if request.MinPrice != nil && *request.MinPrice < 0 || request.MaxPrice != nil && *request.MaxPrice < 0 {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return listParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if request.MinPrice != nil && request.MaxPrice != nil && *request.MinPrice > *request.MaxPrice {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return listParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
 	}
 	if len(request.Query) > 255 || len(request.Category) > 160 {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+		return listParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
 	}
 
 	params := listParams{
@@ -319,7 +319,7 @@ func normalizeListQuery(request ListQuery) (listParams, *cursorPosition, error) 
 
 	cursor, err := decodeCursor(request.Cursor)
 	if err != nil || cursor.SortBy != sortBy || cursor.SortOrder != sortOrder || cursor.Filter != filterFingerprint(params) {
-		return listParams{}, nil, faults.New(faults.KindInvalidInput, errorconst.CatalogInvalidCursor, err)
+		return listParams{}, nil, faults.New(errorconst.CatalogInvalidCursor, err)
 	}
 	return params, &cursor, nil
 }

@@ -76,7 +76,7 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 			identity = policy.KeyFunc(c)
 		}
 		if identity == "" {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.Unauthorized, nil))
+			httpx.HandleError(c, faults.New(errorconst.Unauthorized, nil))
 			c.Abort()
 			return
 		}
@@ -88,14 +88,14 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 			policy.Window.Milliseconds(),
 		).Result()
 		if err != nil {
-			httpx.HandleError(c, faults.New(faults.KindUnavailable, errorconst.ServiceUnavailable, err))
+			httpx.HandleError(c, faults.New(errorconst.ServiceUnavailable, err))
 			c.Abort()
 			return
 		}
 
 		count, ttl, err := parseRateLimitResult(result)
 		if err != nil {
-			httpx.HandleError(c, faults.New(faults.KindUnavailable, errorconst.ServiceUnavailable, err))
+			httpx.HandleError(c, faults.New(errorconst.ServiceUnavailable, err))
 			c.Abort()
 			return
 		}
@@ -112,7 +112,7 @@ func rateLimitHandler(client redis.UniversalClient, selectPolicy func(*gin.Conte
 				retryAfter = 1
 			}
 			c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
-			httpx.HandleError(c, faults.New(faults.KindRateLimit, errorconst.RateLimitExceeded, nil))
+			httpx.HandleError(c, faults.New(errorconst.RateLimitExceeded, nil))
 			c.Abort()
 			return
 		}

@@ -10,7 +10,7 @@ import (
 
 func TestCartIsScopedToAuthenticatedBuyer(t *testing.T) {
 	router := newE2ERouter(t)
-	firstToken := e2ELogin(t, router)
+	firstToken := e2ERegister(t, router)
 
 	productsRequest := httptest.NewRequest(http.MethodGet, "/api/v1/products?per_page=1", nil)
 	productsResponse := httptest.NewRecorder()

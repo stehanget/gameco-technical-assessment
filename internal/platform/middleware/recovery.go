@@ -21,6 +21,6 @@ func Recovery(logger *slog.Logger) gin.HandlerFunc {
 			slog.String("panic", redactDiagnostic(fmt.Sprint(recovered))),
 			slog.String("stack", redactDiagnostic(string(debug.Stack()))),
 		)
-		httpx.HandleError(c, faults.New(faults.KindInternal, errorconst.InternalServerError, nil))
+		httpx.HandleError(c, faults.New(errorconst.InternalServerError, nil))
 	})
 }

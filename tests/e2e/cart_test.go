@@ -3,14 +3,16 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestBuyerCartItemLifecycle(t *testing.T) {
 	router, db := newE2ERouterWithDB(t)
-	accessToken := e2ELogin(t, router)
+	accessToken := e2ERegister(t, router)
 
 	productRequest := httptest.NewRequest(http.MethodGet, "/api/v1/products?per_page=1", nil)
 	productResponse := httptest.NewRecorder()
@@ -94,4 +96,16 @@ func TestCartRejectsUnauthenticatedRequest(t *testing.T) {
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("cart without token: expected status 401, got %d: %s", response.Code, response.Body.String())
 	}
+}
+
+func e2ERegister(t *testing.T, router http.Handler) string {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(fmt.Sprintf(`{"email":"buyer-%d@example.com","password":"correct-horse-battery-staple"}`, time.Now().UnixNano())))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("register: expected status 201, got %d: %s", response.Code, response.Body.String())
+	}
+	return decodeAccessToken(t, response.Body.Bytes())
 }

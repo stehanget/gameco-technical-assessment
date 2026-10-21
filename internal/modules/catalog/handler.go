@@ -38,7 +38,7 @@ func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 func (h *Handler) List(c *gin.Context) {
 	var request ListQuery
 	if err := c.ShouldBindQuery(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *Handler) SellerList(c *gin.Context) {
 	}
 	var request ListQuery
 	if err := c.ShouldBindQuery(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 	result, err := h.service.ListBySeller(c.Request.Context(), actor, request)
@@ -196,7 +196,7 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 	var request CreateProductRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 	response, err := h.service.CreateProduct(c.Request.Context(), actor, request)
@@ -230,7 +230,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 	var request UpdateProductRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 	response, err := h.service.UpdateProduct(c.Request.Context(), actor, c.Param("product_public_id"), request)
@@ -244,10 +244,10 @@ func (h *Handler) Update(c *gin.Context) {
 func actorFromContext(c *gin.Context) (platformauth.Actor, error) {
 	actor, ok := middleware.ActorFromContext(c)
 	if !ok {
-		return platformauth.Actor{}, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil)
+		return platformauth.Actor{}, faults.New(errorconst.AuthMissingContext, nil)
 	}
 	if actor.UserID == 0 {
-		return platformauth.Actor{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil)
+		return platformauth.Actor{}, faults.New(errorconst.AuthInvalidContext, nil)
 	}
 	return actor, nil
 }

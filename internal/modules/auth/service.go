@@ -55,7 +55,7 @@ func (s *Service) Register(ctx context.Context, input RegisterRequest, metadata 
 		return TokenResponse{}, err
 	}
 	if exists {
-		return TokenResponse{}, faults.New(faults.KindConflict, errorconst.AuthEmailAlreadyRegistered, nil)
+		return TokenResponse{}, faults.New(errorconst.AuthEmailAlreadyRegistered, nil)
 	}
 	passwordHash, err := platformauth.HashPassword(input.Password)
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 	user, err := s.repository.FindByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, nil)
+			return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, nil)
 		}
 		return TokenResponse{}, err
 	}
@@ -96,14 +96,14 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 		return TokenResponse{}, stateErr
 	}
 	if securityState.LockedUntil != nil && s.clock.Now().Before(*securityState.LockedUntil) {
-		return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, nil)
+		return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, nil)
 	}
 
 	if err := platformauth.ComparePassword(user.PasswordHash, input.Password); err != nil {
 		if recordErr := s.repository.RecordLoginFailure(ctx, user.ID, s.clock.Now(), s.clock.Now().Add(loginLockDuration)); recordErr != nil {
 			return TokenResponse{}, recordErr
 		}
-		return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, err)
+		return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, err)
 	}
 	if err := s.repository.ResetLoginSecurityState(ctx, user.ID); err != nil {
 		return TokenResponse{}, err
@@ -118,7 +118,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			reuseErr := s.repository.HandleRefreshTokenReuse(ctx, refreshHash)
 			if errors.Is(reuseErr, ErrRefreshTokenReuse) {
-				return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthRefreshTokenReused, reuseErr)
+				return TokenResponse{}, faults.New(errorconst.AuthRefreshTokenReused, reuseErr)
 			}
 			return TokenResponse{}, reuseErr
 		}
@@ -154,7 +154,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 	}
 	if _, err := s.repository.RotateRefreshSession(ctx, refreshHash, replacement); err != nil {
 		if errors.Is(err, ErrRefreshTokenReuse) {
-			return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthRefreshTokenReused, err)
+			return TokenResponse{}, faults.New(errorconst.AuthRefreshTokenReused, err)
 		}
 		return TokenResponse{}, err
 	}
@@ -175,7 +175,7 @@ func (s *Service) Me(ctx context.Context, userID uint) (UserResponse, error) {
 	user, err := s.repository.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return UserResponse{}, faults.New(faults.KindNotFound, errorconst.AuthUserNotFound, err)
+			return UserResponse{}, faults.New(errorconst.AuthUserNotFound, err)
 		}
 		return UserResponse{}, err
 	}
@@ -200,7 +200,7 @@ func (s *Service) issueTokenPair(ctx context.Context, user User, metadata Sessio
 		return TokenResponse{}, err
 	}
 	if len(access.Roles) == 0 {
-		return TokenResponse{}, faults.New(faults.KindInternal, errorconst.AuthNoAssignedRoles, nil)
+		return TokenResponse{}, faults.New(errorconst.AuthNoAssignedRoles, nil)
 	}
 	jtiID, err := identifier.NewPublicID()
 	if err != nil {

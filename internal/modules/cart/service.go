@@ -39,7 +39,7 @@ func (s *Service) Get(ctx context.Context, actor auth.Actor) (CartResponse, erro
 func (s *Service) SetItem(ctx context.Context, actor auth.Actor, productPublicID string, request SetItemRequest) (CartResponse, error) {
 	productID, err := uuid.Parse(productPublicID)
 	if err != nil {
-		return CartResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err)
+		return CartResponse{}, faults.New(errorconst.InvalidRequest, err)
 	}
 	cartID, err := identifier.NewPublicID()
 	if err != nil {
@@ -47,10 +47,13 @@ func (s *Service) SetItem(ctx context.Context, actor auth.Actor, productPublicID
 	}
 	view, err := s.repository.SetItem(ctx, actor.UserID, productID.String(), request.Quantity, cartID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return CartResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		return CartResponse{}, faults.New(errorconst.CartProductNotFound, err)
 	}
 	if errors.Is(err, errInsufficientStock) {
-		return CartResponse{}, faults.New(faults.KindConflict, errorconst.Conflict, err)
+		return CartResponse{}, faults.New(errorconst.CartInsufficientStock, err)
+	}
+	if errors.Is(err, errSelfPurchase) {
+		return CartResponse{}, faults.New(errorconst.SelfPurchaseNotAllowed, err)
 	}
 	if err != nil {
 		return CartResponse{}, err
@@ -60,7 +63,7 @@ func (s *Service) SetItem(ctx context.Context, actor auth.Actor, productPublicID
 
 func (s *Service) DeleteItem(ctx context.Context, actor auth.Actor, productPublicID string) (CartResponse, error) {
 	if _, err := uuid.Parse(productPublicID); err != nil {
-		return CartResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err)
+		return CartResponse{}, faults.New(errorconst.InvalidRequest, err)
 	}
 	view, err := s.repository.DeleteItem(ctx, actor.UserID, productPublicID)
 	if err != nil {

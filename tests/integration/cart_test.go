@@ -15,12 +15,12 @@ func TestCartHTTPAgainstPostgres(t *testing.T) {
 	cfg := testsupport.IntegrationConfig(t)
 	server := testsupport.NewAPI(t, cfg)
 
-	login := postJSON(t, server.URL+"/api/v1/auth/login", map[string]string{
-		"email":    "user@mail.com",
-		"password": "admin123",
+	login := postJSON(t, server.URL+"/api/v1/auth/register", map[string]string{
+		"email":    "cart-buyer@example.com",
+		"password": "correct-horse-battery-staple",
 	})
-	if login.StatusCode != http.StatusOK {
-		t.Fatalf("login: expected 200, got %d: %s", login.StatusCode, login.Body)
+	if login.StatusCode != http.StatusCreated {
+		t.Fatalf("register: expected 201, got %d: %s", login.StatusCode, login.Body)
 	}
 	var token tokenResponse
 	decode(t, login.Body, &token)

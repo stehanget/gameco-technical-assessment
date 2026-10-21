@@ -13,14 +13,26 @@ const (
 	KindInternal        Kind = "internal"
 )
 
-type Error struct {
-	Kind  Kind
-	Code  string
-	Cause error
+type Definition struct {
+	Code    string
+	Kind    Kind
+	Message string
 }
 
-func New(kind Kind, code string, cause error) *Error {
-	return &Error{Kind: kind, Code: code, Cause: cause}
+type Error struct {
+	Kind    Kind
+	Code    string
+	Message string
+	Cause   error
+}
+
+func New(definition Definition, cause error) *Error {
+	return &Error{
+		Kind:    definition.Kind,
+		Code:    definition.Code,
+		Message: definition.Message,
+		Cause:   cause,
+	}
 }
 
 func (e *Error) Error() string {

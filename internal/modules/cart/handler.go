@@ -68,7 +68,7 @@ func (h *Handler) SetItem(c *gin.Context) {
 	}
 	var request SetItemRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
 		return
 	}
 	response, err := h.service.SetItem(c.Request.Context(), actor, c.Param("product_public_id"), request)
@@ -109,7 +109,7 @@ func (h *Handler) DeleteItem(c *gin.Context) {
 func actorFromContext(c *gin.Context) (platformauth.Actor, error) {
 	actor, ok := middleware.ActorFromContext(c)
 	if !ok {
-		return platformauth.Actor{}, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil)
+		return platformauth.Actor{}, faults.New(errorconst.AuthMissingContext, nil)
 	}
 	return actor, nil
 }

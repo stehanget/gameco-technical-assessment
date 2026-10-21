@@ -10,7 +10,7 @@ import (
 
 func TestCartRejectsUnavailableProducts(t *testing.T) {
 	router, db := newE2ERouterWithDB(t)
-	accessToken := e2ELogin(t, router)
+	accessToken := e2ERegister(t, router)
 
 	var product struct {
 		PublicID string `gorm:"column:public_id"`

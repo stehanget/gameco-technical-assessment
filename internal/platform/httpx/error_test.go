@@ -59,7 +59,7 @@ func TestHandleErrorMapsKindToStablePublicContract(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			router := gin.New()
 			router.GET("/error", func(c *gin.Context) {
-				HandleError(c, faults.New(testCase.kind, "", errors.New("internal detail")))
+				HandleError(c, faults.New(faults.Definition{Kind: testCase.kind}, errors.New("internal detail")))
 			})
 
 			record := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func TestHandleErrorUsesTypedPublicCodeAndSafeMessage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/error", func(c *gin.Context) {
-		err := faults.New(faults.KindConflict, errorconst.AuthEmailAlreadyRegistered, errors.New("duplicate email detail"))
+		err := faults.New(errorconst.AuthEmailAlreadyRegistered, errors.New("duplicate email detail"))
 		HandleError(c, err)
 	})
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	cartconstants "gameco-technical-assessment/internal/constants/cart"
+	catalogconstants "gameco-technical-assessment/internal/constants/catalog"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -13,7 +14,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var errInsufficientStock = errors.New("insufficient product stock")
+var (
+	errInsufficientStock = errors.New("insufficient product stock")
+	errSelfPurchase      = errors.New("cannot purchase own product")
+)
 
 type Repository struct {
 	db *gorm.DB
@@ -79,16 +83,20 @@ func (r *Repository) SetItem(ctx context.Context, buyerID uint, productPublicID 
 
 		var product struct {
 			ID            uint
+			SellerID      uint
 			Name          string
 			PriceAmount   int64
 			StockQuantity int
 		}
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Table("products").
-			Select("id, name, price_amount, stock_quantity").
-			Where("public_id = ? AND status = ? AND deleted_at IS NULL", productPublicID, "active").
+			Select("id, seller_id, name, price_amount, stock_quantity").
+			Where("public_id = ? AND status = ? AND deleted_at IS NULL", productPublicID, catalogconstants.ProductStatusActive).
 			First(&product).Error; err != nil {
 			return err
+		}
+		if product.SellerID == buyerID {
+			return errSelfPurchase
 		}
 		if quantity > product.StockQuantity {
 			return errInsufficientStock

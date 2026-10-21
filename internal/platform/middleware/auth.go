@@ -24,30 +24,30 @@ func Auth(jwtManager *platformauth.JWTManager, resolve ActorResolver) gin.Handle
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingAuthorization, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthMissingAuthorization, nil))
 			c.Abort()
 			return
 		}
 		tokenString := strings.TrimPrefix(header, "Bearer ")
 		if tokenString == header {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidAuthorization, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthInvalidAuthorization, nil))
 			c.Abort()
 			return
 		}
 		claims, err := jwtManager.ParseAccessToken(tokenString)
 		if err != nil || claims.TokenID == "" {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidToken, err))
+			httpx.HandleError(c, faults.New(errorconst.AuthInvalidToken, err))
 			c.Abort()
 			return
 		}
 		actor, err := resolve(c.Request.Context(), claims.TokenID)
 		if err != nil {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthSessionInvalid, err))
+			httpx.HandleError(c, faults.New(errorconst.AuthSessionInvalid, err))
 			c.Abort()
 			return
 		}
 		if actor.UserID == 0 || claims.UserID != strconv.FormatUint(uint64(actor.UserID), 10) {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthInvalidContext, nil))
 			c.Abort()
 			return
 		}
@@ -61,13 +61,13 @@ func RequirePermissions(required ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		value, ok := c.Get(ActorKey)
 		if !ok {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthMissingContext, nil))
 			c.Abort()
 			return
 		}
 		actor, ok := value.(platformauth.Actor)
 		if !ok {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthInvalidContext, nil))
 			c.Abort()
 			return
 		}
@@ -77,7 +77,7 @@ func RequirePermissions(required ...string) gin.HandlerFunc {
 		}
 		for _, permission := range required {
 			if _, ok := allowed[permission]; !ok {
-				httpx.HandleError(c, faults.New(faults.KindForbidden, errorconst.AuthInsufficientPermissions, nil))
+				httpx.HandleError(c, faults.New(errorconst.AuthInsufficientPermissions, nil))
 				c.Abort()
 				return
 			}
@@ -90,13 +90,13 @@ func RequireRoles(required ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		value, ok := c.Get(ActorKey)
 		if !ok {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthMissingContext, nil))
 			c.Abort()
 			return
 		}
 		actor, ok := value.(platformauth.Actor)
 		if !ok {
-			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
+			httpx.HandleError(c, faults.New(errorconst.AuthInvalidContext, nil))
 			c.Abort()
 			return
 		}
@@ -110,7 +110,7 @@ func RequireRoles(required ...string) gin.HandlerFunc {
 				return
 			}
 		}
-		httpx.HandleError(c, faults.New(faults.KindForbidden, errorconst.AuthInsufficientPermissions, nil))
+		httpx.HandleError(c, faults.New(errorconst.AuthInsufficientPermissions, nil))
 		c.Abort()
 	}
 }
