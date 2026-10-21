@@ -17,12 +17,17 @@ import (
 )
 
 var (
-	errIdempotencyConflict = errors.New("checkout idempotency key has a different request hash")
-	errIdempotencyPending  = errors.New("checkout idempotency result is unavailable")
-	errEmptyCart           = errors.New("checkout cart is empty")
-	errUnavailableCart     = errors.New("checkout cart contains unavailable items")
-	errSelfPurchase        = errors.New("cannot purchase own product")
-	errInsufficientStock   = errors.New("checkout stock changed during reservation")
+	errIdempotencyConflict     = errors.New("checkout idempotency key has a different request hash")
+	errIdempotencyPending      = errors.New("checkout idempotency result is unavailable")
+	errEmptyCart               = errors.New("checkout cart is empty")
+	errUnavailableCart         = errors.New("checkout cart contains unavailable items")
+	errSelfPurchase            = errors.New("cannot purchase own product")
+	errInsufficientStock       = errors.New("checkout stock changed during reservation")
+	errWebhookEventConflict    = errors.New("payment webhook event payload conflicts with previous delivery")
+	errWebhookInvalidEvent     = errors.New("payment webhook event type is invalid")
+	errWebhookPaymentNotFound  = errors.New("payment webhook payment reference was not found")
+	errWebhookAmountMismatch   = errors.New("payment webhook amount does not match payment")
+	errWebhookMalformedPayload = errors.New("payment webhook payload is malformed")
 )
 
 type Repository struct{ db *gorm.DB }
@@ -173,6 +178,89 @@ func (r *Repository) FindOrderByPublicID(ctx context.Context, buyerID uint, publ
 		return OrderResponse{}, err
 	}
 	return loadOrder(r.db.WithContext(ctx), order.ID)
+}
+
+func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookRequest, payloadHash string, now time.Time) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		inbox := PaymentWebhookEvent{
+			Provider:         simulatedPaymentProvider,
+			EventID:          event.EventID,
+			PaymentReference: event.PaymentReference,
+			EventType:        event.EventType,
+			PayloadHash:      payloadHash,
+		}
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&inbox).Error; err != nil {
+			return err
+		}
+		var stored PaymentWebhookEvent
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("provider = ? AND event_id = ?", simulatedPaymentProvider, event.EventID).
+			First(&stored).Error; err != nil {
+			return err
+		}
+		if stored.PayloadHash != payloadHash {
+			return errWebhookEventConflict
+		}
+		if stored.ProcessedAt != nil {
+			return nil
+		}
+
+		var payment Payment
+		paymentQuery := tx.Where("payment_reference = ?", event.PaymentReference)
+		if tx.Dialector.Name() == "postgres" {
+			paymentQuery = paymentQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		if err := paymentQuery.First(&payment).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			return errWebhookPaymentNotFound
+		} else if err != nil {
+			return err
+		}
+		if payment.Amount != event.Amount {
+			return errWebhookAmountMismatch
+		}
+
+		var order Order
+		orderQuery := tx.Where("id = ?", payment.OrderID)
+		if tx.Dialector.Name() == "postgres" {
+			orderQuery = orderQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		if err := orderQuery.First(&order).Error; err != nil {
+			return err
+		}
+		switch payment.Status {
+		case "pending":
+			switch event.EventType {
+			case "payment.paid":
+				if err := tx.Model(&payment).Updates(map[string]any{"status": "paid", "paid_at": now}).Error; err != nil {
+					return err
+				}
+				if err := tx.Model(&order).Updates(map[string]any{"status": "paid", "paid_at": now}).Error; err != nil {
+					return err
+				}
+			case "payment.failed", "payment.expired":
+				updates := map[string]any{"status": map[string]string{"payment.failed": "failed", "payment.expired": "expired"}[event.EventType]}
+				if event.FailureReason != "" {
+					updates["failure_reason"] = event.FailureReason
+				}
+				if event.EventType == "payment.failed" {
+					updates["failed_at"] = now
+				}
+				if err := tx.Model(&payment).Updates(updates).Error; err != nil {
+					return err
+				}
+				if err := tx.Model(&order).Update("status", "payment_failed").Error; err != nil {
+					return err
+				}
+			default:
+				return errWebhookInvalidEvent
+			}
+		case "paid", "failed", "expired":
+			// Terminal payment states are safe no-ops for a new event.
+		default:
+			return errWebhookInvalidEvent
+		}
+		return tx.Model(&stored).Update("processed_at", now).Error
+	})
 }
 
 func loadOrder(tx *gorm.DB, orderID uint) (OrderResponse, error) {

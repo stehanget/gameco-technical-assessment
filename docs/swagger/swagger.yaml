@@ -1337,6 +1337,51 @@ paths:
       summary: Update seller product
       tags:
       - seller-products
+  /api/v1/webhooks/payment:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the simulated provider HMAC signature and freshness window,
+        then atomically applies a payment event with durable replay protection.
+      parameters:
+      - description: Unix timestamp used in the signed message
+        in: header
+        name: X-Payment-Timestamp
+        required: true
+        type: string
+      - description: Hex HMAC-SHA256 signature
+        in: header
+        name: X-Payment-Signature
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Webhook accepted and processed or safely replayed
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Receive payment-provider webhook
+      tags:
+      - payment-webhooks
   /health:
     get:
       description: Returns liveness status
@@ -1375,6 +1420,9 @@ tags:
   name: checkout
 - description: Authenticated buyer order detail and ownership-scoped order reads.
   name: orders
+- description: Simulated payment-provider callbacks with HMAC verification and replay
+    protection.
+  name: payment-webhooks
 - description: Public catalog product listing and product detail operations.
   name: products
 - description: Canonical category options used by public catalog filters and seller

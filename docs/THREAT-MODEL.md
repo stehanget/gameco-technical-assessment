@@ -34,7 +34,7 @@ The repository currently has implemented authentication, database-backed session
    Redis provides shared rate-limit state and operational support. Redis must not become the only source of truth for session revocation.
 
 5. **Payment provider → webhook endpoint**
-   Payment callbacks are untrusted input. The future webhook handler must verify HMAC signatures, timestamp freshness, and event idempotency before changing payment or order state.
+   Payment callbacks are untrusted input. The webhook verifies HMAC signatures and timestamp freshness before bounded payload decoding, and persists provider/event identity with a payload hash in the same transaction as payment/order state changes.
 
 6. **API → worker/queue**
    Queued jobs are untrusted at the boundary and must be validated and authorized before performing mutations.
@@ -87,7 +87,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** Redis-backed shared rate limiting, request body limits, bounded query filters, cursor page-size limits, indexed catalog search, timeout-aware external calls, and endpoint-specific policies.
 
-**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. Public catalog query bounds, opaque cursors, allow-listed sorting, and PostgreSQL trigram search indexes are implemented. Dedicated checkout/payment/webhook rate-limit policies, body-size limits, and payment-provider circuit breaking remain future hardening work.
+**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. Public catalog query bounds, opaque cursors, allow-listed sorting, PostgreSQL trigram search indexes, and a 64 KiB payment-webhook body limit are implemented. Dedicated checkout/payment/webhook rate-limit policies and payment-provider circuit breaking remain future hardening work.
 
 ### Public catalog query safety
 
@@ -111,7 +111,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations required:** Idempotency keys, atomic stock mutation, order/payment state transitions, webhook replay protection, per-user and per-IP limits, and audit/stock ledgers.
 
-**Current status:** Checkout uses PostgreSQL-backed idempotency records, deterministic product locking, conditional stock decrements, order/payment snapshots, and stock movements in one transaction. SQLite E2E, PostgreSQL integration, and real-binary runtime tests cover the sequential idempotent flow. Concurrent last-stock proof, webhook replay protection, and payment lifecycle transitions remain pending.
+**Current status:** Checkout uses PostgreSQL-backed idempotency records, deterministic product locking, conditional stock decrements, order/payment snapshots, and stock movements in one transaction. The webhook verifies HMAC/freshness, validates event payload/reference/amount, persists provider-event payload hashes, replays same-event retries safely, and transitions pending payment/order state atomically. SQLite E2E, PostgreSQL integration, and runtime smoke cover the successful payment path, concurrent duplicate delivery, and rollback of failed event claims.
 
 ### API7:2023 Server Side Request Forgery
 
@@ -143,7 +143,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Verify HMAC with constant-time comparison, reject stale timestamps, deduplicate provider event IDs, validate amounts/references against local state, and apply explicit state transitions.
 
-**Current status:** Payment tables are documented but the webhook implementation is pending.
+**Current status:** The payment webhook verifies HMAC signatures with constant-time comparison, enforces timestamp freshness and a 64 KiB body bound, validates event schema and local amount/reference, persists durable `(provider, event_id, payload_hash)` inbox state, and applies pending→paid/failed/expired transitions without stock restoration. PostgreSQL integration proves concurrent duplicate serialization and rollback of failed event claims, while runtime smoke proves the current binary accepts a signed callback and exposes the paid order state. Retention cleanup and outbound provider integration remain pending.
 
 ## Concrete attack scenarios
 

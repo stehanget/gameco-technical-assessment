@@ -16,6 +16,7 @@ import (
 	catalogmodule "gameco-technical-assessment/internal/modules/catalog"
 	checkoutmodule "gameco-technical-assessment/internal/modules/checkout"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
+	platformclock "gameco-technical-assessment/internal/platform/clock"
 	"gameco-technical-assessment/internal/seeds"
 
 	"github.com/alicebob/miniredis/v2"
@@ -64,6 +65,7 @@ func newE2ERouterWithDB(t *testing.T) (*gin.Engine, *gorm.DB) {
 		&checkoutmodule.Order{},
 		&checkoutmodule.OrderItem{},
 		&checkoutmodule.Payment{},
+		&checkoutmodule.PaymentWebhookEvent{},
 		&checkoutmodule.IdempotencyKey{},
 		&checkoutmodule.StockMovement{},
 	); err != nil {
@@ -80,10 +82,11 @@ func newE2ERouterWithDB(t *testing.T) (*gin.Engine, *gorm.DB) {
 	container := &app.Container{
 		Config: config.Config{
 			App: config.AppConfig{
-				Env:             "test",
-				JWTSecret:       "test-secret",
-				AccessTokenTTL:  15 * time.Minute,
-				RefreshTokenTTL: time.Hour,
+				Env:                  "test",
+				JWTSecret:            "test-secret",
+				PaymentWebhookSecret: "test-payment-webhook-secret",
+				AccessTokenTTL:       15 * time.Minute,
+				RefreshTokenTTL:      time.Hour,
 			},
 			RateLimit: config.RateLimitConfig{
 				Anonymous:     config.RateLimitPolicyConfig{Limit: 1000, Window: time.Minute},
@@ -94,6 +97,7 @@ func newE2ERouterWithDB(t *testing.T) (*gin.Engine, *gorm.DB) {
 		DB:        db,
 		Redis:     redisClient,
 		JWTSigner: platformauth.NewJWTManager("test-secret"),
+		Clock:     platformclock.Fixed{Current: time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)},
 	}
 	return app.NewRouter(container), db
 }

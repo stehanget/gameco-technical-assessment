@@ -102,4 +102,28 @@ var (
 	OrderNotFound = faults.Definition{
 		Code: "order.not_found", Kind: faults.KindNotFound, Message: "order not found",
 	}
+	PaymentWebhookSignatureInvalid = faults.Definition{
+		Code: "payment_webhook.signature_invalid", Kind: faults.KindUnauthenticated, Message: "invalid payment webhook signature",
+	}
+	PaymentWebhookTimestampInvalid = faults.Definition{
+		Code: "payment_webhook.timestamp_invalid", Kind: faults.KindUnauthenticated, Message: "invalid payment webhook timestamp",
+	}
+	PaymentWebhookUnavailable = faults.Definition{
+		Code: "payment_webhook.unavailable", Kind: faults.KindUnavailable, Message: "payment webhook processing is unavailable",
+	}
+	PaymentWebhookMalformedPayload = faults.Definition{
+		Code: "payment_webhook.malformed_payload", Kind: faults.KindInvalidInput, Message: "invalid payment webhook payload",
+	}
+	PaymentWebhookInvalidEvent = faults.Definition{
+		Code: "payment_webhook.invalid_event", Kind: faults.KindInvalidInput, Message: "invalid payment webhook event",
+	}
+	PaymentWebhookPaymentNotFound = faults.Definition{
+		Code: "payment_webhook.payment_not_found", Kind: faults.KindNotFound, Message: "payment not found",
+	}
+	PaymentWebhookAmountMismatch = faults.Definition{
+		Code: "payment_webhook.amount_mismatch", Kind: faults.KindConflict, Message: "payment amount does not match webhook",
+	}
+	PaymentWebhookEventConflict = faults.Definition{
+		Code: "payment_webhook.event_conflict", Kind: faults.KindConflict, Message: "payment webhook event conflicts with a previous delivery",
+	}
 )

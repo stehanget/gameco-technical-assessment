@@ -53,6 +53,19 @@ type Payment struct {
 
 func (Payment) TableName() string { return "payments" }
 
+type PaymentWebhookEvent struct {
+	ID               uint       `gorm:"primaryKey"`
+	Provider         string     `gorm:"size:64;not null;uniqueIndex:uq_payment_webhook_events_provider_event,priority:1"`
+	EventID          string     `gorm:"size:128;not null;uniqueIndex:uq_payment_webhook_events_provider_event,priority:2"`
+	PaymentReference string     `gorm:"size:128;not null;index"`
+	EventType        string     `gorm:"size:64;not null"`
+	PayloadHash      string     `gorm:"size:64;not null"`
+	ProcessedAt      *time.Time `json:"-"`
+	CreatedAt        time.Time
+}
+
+func (PaymentWebhookEvent) TableName() string { return "payment_webhook_events" }
+
 type IdempotencyKey struct {
 	ID             uint   `gorm:"primaryKey"`
 	BuyerID        uint   `gorm:"not null"`

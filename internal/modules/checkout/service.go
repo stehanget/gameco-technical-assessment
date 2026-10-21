@@ -2,8 +2,11 @@ package checkout
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
+	"time"
 
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/platform/auth"
@@ -56,4 +59,28 @@ func (s *Service) Detail(ctx context.Context, actor auth.Actor, publicID string)
 		return OrderResponse{}, err
 	}
 	return response, nil
+}
+
+func (s *Service) ProcessWebhook(ctx context.Context, request PaymentWebhookRequest, body []byte, now time.Time) error {
+	if err := request.Validate(); errors.Is(err, errWebhookMalformedPayload) {
+		return faults.New(errorconst.PaymentWebhookMalformedPayload, err)
+	} else if err != nil {
+		return faults.New(errorconst.PaymentWebhookInvalidEvent, err)
+	}
+	sum := sha256.Sum256(body)
+	err := s.repository.ProcessWebhook(ctx, request, hex.EncodeToString(sum[:]), now)
+	switch {
+	case errors.Is(err, errWebhookEventConflict):
+		return faults.New(errorconst.PaymentWebhookEventConflict, err)
+	case errors.Is(err, errWebhookInvalidEvent):
+		return faults.New(errorconst.PaymentWebhookInvalidEvent, err)
+	case errors.Is(err, errWebhookPaymentNotFound):
+		return faults.New(errorconst.PaymentWebhookPaymentNotFound, err)
+	case errors.Is(err, errWebhookAmountMismatch):
+		return faults.New(errorconst.PaymentWebhookAmountMismatch, err)
+	case err != nil:
+		return err
+	default:
+		return nil
+	}
 }

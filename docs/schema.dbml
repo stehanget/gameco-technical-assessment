@@ -270,20 +270,21 @@ Table payments {
 
 Table payment_webhook_events {
   id bigint [pk, increment]
-  provider_event_id varchar(255) [not null, unique]
+  provider varchar(64) [not null]
+  event_id varchar(128) [not null]
   payment_reference varchar(128) [not null]
   event_type varchar(64) [not null]
-  payload jsonb [not null]
-  signature_verified boolean [not null, default: false]
+  payload_hash varchar(64) [not null]
   processed_at timestamptz
   created_at timestamptz [not null, default: `now()`]
 
   indexes {
+    (provider, event_id) [unique, name: 'uq_payment_webhook_events_provider_event']
     (payment_reference) [name: 'idx_payment_webhook_events_payment_reference']
     (processed_at) [name: 'idx_payment_webhook_events_processed_at']
   }
 
-  Note: 'Idempotent payment-provider webhook inbox. Signature verification, replay-window validation, and processing state are tracked separately from payment business state.'
+  Note: 'Idempotent payment-provider webhook inbox. Signature verification, replay-window validation, and payload-hash replay protection are tracked separately from payment business state; raw payload and signatures are not stored.'
 }
 
 Table audit_events {

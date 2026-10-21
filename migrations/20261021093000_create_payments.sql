@@ -22,13 +22,14 @@ CREATE INDEX IF NOT EXISTS idx_payments_expiration
 
 CREATE TABLE IF NOT EXISTS payment_webhook_events (
     id BIGSERIAL PRIMARY KEY,
-    provider_event_id VARCHAR(255) NOT NULL UNIQUE,
+    provider VARCHAR(64) NOT NULL,
+    event_id VARCHAR(128) NOT NULL,
     payment_reference VARCHAR(128) NOT NULL,
     event_type VARCHAR(64) NOT NULL,
-    payload JSONB NOT NULL,
-    signature_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    payload_hash VARCHAR(64) NOT NULL,
     processed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_payment_webhook_events_provider_event UNIQUE (provider, event_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_payment_reference

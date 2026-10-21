@@ -72,9 +72,11 @@ func NewRouter(container *Container) *gin.Engine {
 		ResolveActor: actorResolver,
 	})
 	modulecheckout.RegisterRoutes(api, modulecheckout.RouteDependencies{
-		DB:           container.DB,
-		JWTSigner:    container.JWTSigner,
-		ResolveActor: actorResolver,
+		DB:                   container.DB,
+		JWTSigner:            container.JWTSigner,
+		ResolveActor:         actorResolver,
+		PaymentWebhookSecret: container.Config.App.PaymentWebhookSecret,
+		Clock:                container.Clock,
 	})
 
 	return router

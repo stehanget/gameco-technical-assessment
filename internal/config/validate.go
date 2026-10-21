@@ -14,6 +14,9 @@ func (c Config) Validate() error {
 	if c.App.JWTSecret == "" || c.App.JWTSecret == "change-me" {
 		return fmt.Errorf("APP_JWT_SECRET must be explicitly configured")
 	}
+	if c.App.Env == "production" && c.App.PaymentWebhookSecret == "" {
+		return fmt.Errorf("APP_PAYMENT_WEBHOOK_SECRET must be explicitly configured")
+	}
 
 	if c.App.AccessTokenTTL <= 0 {
 		return fmt.Errorf("APP_ACCESS_TOKEN_TTL must be greater than zero")

@@ -9,16 +9,17 @@ import (
 const maxPreviousJWTSecrets = 3
 
 type AppConfig struct {
-	Name               string
-	Env                string
-	Port               string
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-	ShutdownTimeout    time.Duration
-	JWTSecret          string
-	JWTPreviousSecrets []string
-	AccessTokenTTL     time.Duration
-	RefreshTokenTTL    time.Duration
+	Name                 string
+	Env                  string
+	Port                 string
+	ReadTimeout          time.Duration
+	WriteTimeout         time.Duration
+	ShutdownTimeout      time.Duration
+	JWTSecret            string
+	JWTPreviousSecrets   []string
+	PaymentWebhookSecret string
+	AccessTokenTTL       time.Duration
+	RefreshTokenTTL      time.Duration
 }
 
 func loadAppConfig() (AppConfig, error) {
@@ -53,16 +54,17 @@ func loadAppConfig() (AppConfig, error) {
 	}
 
 	return AppConfig{
-		Name:               getEnv("APP_NAME", "gameco-technical-assessment"),
-		Env:                getEnv("APP_ENV", "development"),
-		Port:               getEnv("APP_PORT", "8080"),
-		ReadTimeout:        readTimeout,
-		WriteTimeout:       writeTimeout,
-		ShutdownTimeout:    shutdownTimeout,
-		JWTSecret:          jwtSecret,
-		JWTPreviousSecrets: previousSecrets,
-		AccessTokenTTL:     accessTokenTTL,
-		RefreshTokenTTL:    refreshTokenTTL,
+		Name:                 getEnv("APP_NAME", "gameco-technical-assessment"),
+		Env:                  getEnv("APP_ENV", "development"),
+		Port:                 getEnv("APP_PORT", "8080"),
+		ReadTimeout:          readTimeout,
+		WriteTimeout:         writeTimeout,
+		ShutdownTimeout:      shutdownTimeout,
+		JWTSecret:            jwtSecret,
+		JWTPreviousSecrets:   previousSecrets,
+		PaymentWebhookSecret: getEnv("APP_PAYMENT_WEBHOOK_SECRET", ""),
+		AccessTokenTTL:       accessTokenTTL,
+		RefreshTokenTTL:      refreshTokenTTL,
 	}, nil
 }
 

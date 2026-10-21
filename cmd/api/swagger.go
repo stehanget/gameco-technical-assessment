@@ -21,6 +21,8 @@
 // @tag.description Buyer checkout, stock reservation, order creation, and idempotent retry handling.
 // @tag.name orders
 // @tag.description Authenticated buyer order detail and ownership-scoped order reads.
+// @tag.name payment-webhooks
+// @tag.description Simulated payment-provider callbacks with HMAC verification and replay protection.
 // @tag.name products
 // @tag.description Public catalog product listing and product detail operations.
 // @tag.name categories

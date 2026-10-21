@@ -3,6 +3,7 @@ package checkout
 import (
 	"gameco-technical-assessment/internal/constants/role"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
+	platformclock "gameco-technical-assessment/internal/platform/clock"
 	"gameco-technical-assessment/internal/platform/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -10,19 +11,22 @@ import (
 )
 
 type RouteDependencies struct {
-	DB           *gorm.DB
-	JWTSigner    *platformauth.JWTManager
-	ResolveActor middleware.ActorResolver
+	DB                   *gorm.DB
+	JWTSigner            *platformauth.JWTManager
+	ResolveActor         middleware.ActorResolver
+	PaymentWebhookSecret string
+	Clock                platformclock.Clock
 }
 
 func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	repository := NewRepository(deps.DB)
 	service := NewService(repository)
-	handler := NewHandler(service)
+	handler := NewHandler(service, deps.PaymentWebhookSecret, deps.Clock)
 
 	group := router.Group("")
 	group.Use(middleware.Auth(deps.JWTSigner, deps.ResolveActor))
 	group.Use(middleware.RequireRoles(role.Buyer))
 	group.POST("/checkout", handler.Create)
 	group.GET("/orders/:order_public_id", handler.Detail)
+	router.POST("/webhooks/payment", handler.PaymentWebhook)
 }

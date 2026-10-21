@@ -10,3 +10,4 @@
 - [ADR-0008: Seller product read and ownership authorization](0008-seller-product-read-and-ownership-authorization.md)
 - [ADR-0009: Buyer cart lifecycle and mutation contract](0009-buyer-cart-lifecycle.md)
 - [ADR-0010: Checkout idempotency and order creation boundary](0010-checkout-idempotency-and-order-creation.md)
+- [ADR-0011: Payment webhook and state transitions](0011-payment-webhook-and-state-transitions.md)

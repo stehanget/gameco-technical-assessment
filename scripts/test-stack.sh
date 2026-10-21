@@ -22,6 +22,10 @@ load_test_env() {
   . "${TEST_ENV_FILE}"
   set +a
 
+  # Keep local disposable tests deterministic when an older .env.test omits the webhook secret.
+  : "${APP_PAYMENT_WEBHOOK_SECRET:=gameco-test-payment-webhook-secret}"
+  export APP_PAYMENT_WEBHOOK_SECRET
+
   : "${POSTGRES_USER:?POSTGRES_USER must be set in ${TEST_ENV_FILE}}"
   : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in ${TEST_ENV_FILE}}"
   : "${POSTGRES_DB:?POSTGRES_DB must be set in ${TEST_ENV_FILE}}"
