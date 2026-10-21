@@ -468,6 +468,8 @@ definitions:
         type: array
       payment_reference:
         type: string
+      payment_status:
+        type: string
       public_id:
         type: string
       status:
@@ -478,6 +480,7 @@ definitions:
     - created_at
     - items
     - payment_reference
+    - payment_status
     - public_id
     - status
     - total_amount
@@ -1000,6 +1003,45 @@ paths:
       summary: Enqueue example creation
       tags:
       - examples
+  /api/v1/orders/{order_public_id}:
+    get:
+      description: Returns an order and its immutable item snapshots for the authenticated
+        buyer. Orders owned by another buyer are not disclosed.
+      parameters:
+      - description: Order public identifier
+        format: uuid
+        in: path
+        name: order_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/checkout.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get buyer order detail
+      tags:
+      - orders
   /api/v1/products:
     get:
       description: Lists active, non-deleted products with filtering, search, sorting,
@@ -1331,6 +1373,8 @@ tags:
 - description: Buyer checkout, stock reservation, order creation, and idempotent retry
     handling.
   name: checkout
+- description: Authenticated buyer order detail and ownership-scoped order reads.
+  name: orders
 - description: Public catalog product listing and product detail operations.
   name: products
 - description: Canonical category options used by public catalog filters and seller

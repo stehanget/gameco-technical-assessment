@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, buyer cart item management, and the initial checkout flow. Cart ownership, current-stock validation, self-purchase prevention, idempotent checkout retries, order/payment creation, stock reservation, stock movements, and checkout runtime coverage are implemented. Buyer order read APIs, payment webhook processing, order lifecycle transitions, and audit-event producers remain future transaction scope.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, buyer cart item management, the initial checkout flow, and buyer order detail reads. Cart ownership, current-stock validation, self-purchase prevention, idempotent checkout retries, order/payment creation, stock reservation, stock movements, buyer-owned order detail authorization, and checkout runtime coverage are implemented. Payment webhook processing, order lifecycle transitions, order listing, and audit-event producers remain future transaction scope.
 
 ## Assets
 
@@ -63,7 +63,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Every marketplace read and mutation must scope the query by the authenticated actor and resource ownership, not by identifier alone. Seller product writes must include seller ownership in the database query. Buyer order reads must include buyer ownership. Public catalog reads must exclude soft-deleted products.
 
-**Current status:** Public catalog reads, seller product handlers, and the authenticated buyer checkout flow are implemented with actor-scoped checks. Buyer order read APIs and broader order ownership projections remain pending because order detail/list routes have not been added yet.
+**Current status:** Public catalog reads, seller product handlers, the authenticated buyer checkout flow, and `GET /api/v1/orders/{order_public_id}` are implemented with actor-scoped checks. Order detail queries scope by both public order identifier and authenticated buyer ID; foreign-owner and malformed-identifier cases are covered by E2E and PostgreSQL integration tests. Order listing and broader order ownership projections remain future scope.
 
 ### API2:2023 Broken Authentication
 

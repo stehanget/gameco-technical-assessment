@@ -99,4 +99,7 @@ var (
 	CheckoutInsufficientStock = faults.Definition{
 		Code: "checkout.insufficient_stock", Kind: faults.KindConflict, Message: "requested quantity exceeds available stock",
 	}
+	OrderNotFound = faults.Definition{
+		Code: "order.not_found", Kind: faults.KindNotFound, Message: "order not found",
+	}
 )

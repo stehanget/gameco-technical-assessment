@@ -51,6 +51,38 @@ func TestCheckoutHTTPAgainstPostgres(t *testing.T) {
 		t.Fatalf("checkout: missing order/payment result: %+v", firstPayload.Data)
 	}
 
+	detail := request(t, http.MethodGet, server.URL+"/api/v1/orders/"+firstPayload.Data.PublicID, token.Data.AccessToken, nil)
+	if detail.StatusCode != http.StatusOK {
+		t.Fatalf("order detail: expected 200, got %d: %s", detail.StatusCode, detail.Body)
+	}
+	var detailPayload struct {
+		Data struct {
+			PublicID      string `json:"public_id"`
+			PaymentStatus string `json:"payment_status"`
+			Items         []struct {
+				Quantity int `json:"quantity"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	decode(t, detail.Body, &detailPayload)
+	if detailPayload.Data.PublicID != firstPayload.Data.PublicID || detailPayload.Data.PaymentStatus != "pending" || len(detailPayload.Data.Items) != 1 || detailPayload.Data.Items[0].Quantity != 1 {
+		t.Fatalf("unexpected order detail: %+v", detailPayload.Data)
+	}
+
+	foreignRegistration := postJSON(t, server.URL+"/api/v1/auth/register", map[string]string{
+		"email":    "checkout-foreign-buyer@example.com",
+		"password": "correct-horse-battery-staple",
+	})
+	if foreignRegistration.StatusCode != http.StatusCreated {
+		t.Fatalf("foreign buyer register: expected 201, got %d: %s", foreignRegistration.StatusCode, foreignRegistration.Body)
+	}
+	var foreignToken tokenResponse
+	decode(t, foreignRegistration.Body, &foreignToken)
+	foreignDetail := request(t, http.MethodGet, server.URL+"/api/v1/orders/"+firstPayload.Data.PublicID, foreignToken.Data.AccessToken, nil)
+	if foreignDetail.StatusCode != http.StatusNotFound {
+		t.Fatalf("foreign order detail: expected 404, got %d: %s", foreignDetail.StatusCode, foreignDetail.Body)
+	}
+
 	second := checkoutRequest(t, server.URL+"/api/v1/checkout", token.Data.AccessToken, "postgres-checkout-key")
 	if second.StatusCode != http.StatusCreated {
 		t.Fatalf("checkout retry: expected 201, got %d: %s", second.StatusCode, second.Body)

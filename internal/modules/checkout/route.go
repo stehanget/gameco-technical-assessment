@@ -19,8 +19,10 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	repository := NewRepository(deps.DB)
 	service := NewService(repository)
 	handler := NewHandler(service)
-	group := router.Group("/checkout")
+
+	group := router.Group("")
 	group.Use(middleware.Auth(deps.JWTSigner, deps.ResolveActor))
 	group.Use(middleware.RequireRoles(role.Buyer))
-	group.POST("", handler.Create)
+	group.POST("/checkout", handler.Create)
+	group.GET("/orders/:order_public_id", handler.Detail)
 }

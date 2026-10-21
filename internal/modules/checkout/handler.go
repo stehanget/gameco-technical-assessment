@@ -42,3 +42,30 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 	httpx.Success(c, http.StatusCreated, response)
 }
+
+// Detail godoc
+// @Summary Get buyer order detail
+// @Description Returns an order and its immutable item snapshots for the authenticated buyer. Orders owned by another buyer are not disclosed.
+// @Tags orders
+// @Produce json
+// @Security BearerAuth
+// @Param order_public_id path string true "Order public identifier" format(uuid)
+// @Success 200 {object} Response
+// @Failure 401 {object} httpx.ErrorResponse
+// @Failure 403 {object} httpx.ErrorResponse
+// @Failure 404 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/orders/{order_public_id} [get]
+func (h *Handler) Detail(c *gin.Context) {
+	actor, ok := middleware.ActorFromContext(c)
+	if !ok {
+		httpx.HandleError(c, faults.New(errorconst.AuthMissingContext, nil))
+		return
+	}
+	response, err := h.service.Detail(c.Request.Context(), actor, c.Param("order_public_id"))
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, response)
+}

@@ -72,6 +72,48 @@ func TestCheckoutIsIdempotentAndReservesStock(t *testing.T) {
 		t.Fatalf("retry did not replay original result: first=%s second=%s", first, second)
 	}
 
+	detailRequest := httptest.NewRequest(http.MethodGet, "/api/v1/orders/"+firstEnvelope.Data.PublicID, nil)
+	detailRequest.Header.Set("Authorization", "Bearer "+token)
+	detailResponse := httptest.NewRecorder()
+	router.ServeHTTP(detailResponse, detailRequest)
+	if detailResponse.Code != http.StatusOK {
+		t.Fatalf("order detail: expected 200, got %d: %s", detailResponse.Code, detailResponse.Body.String())
+	}
+	var detailEnvelope struct {
+		Data struct {
+			PublicID         string `json:"public_id"`
+			PaymentReference string `json:"payment_reference"`
+			PaymentStatus    string `json:"payment_status"`
+			Items            []struct {
+				ProductName string `json:"product_name"`
+				Quantity    int    `json:"quantity"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(detailResponse.Body.Bytes(), &detailEnvelope); err != nil {
+		t.Fatal(err)
+	}
+	if detailEnvelope.Data.PublicID != firstEnvelope.Data.PublicID || detailEnvelope.Data.PaymentReference != firstEnvelope.Data.PaymentReference || detailEnvelope.Data.PaymentStatus != "pending" || len(detailEnvelope.Data.Items) != 1 || detailEnvelope.Data.Items[0].Quantity != 1 {
+		t.Fatalf("unexpected order detail: %+v", detailEnvelope.Data)
+	}
+
+	otherBuyerToken := e2ERegister(t, router)
+	foreignRequest := httptest.NewRequest(http.MethodGet, "/api/v1/orders/"+firstEnvelope.Data.PublicID, nil)
+	foreignRequest.Header.Set("Authorization", "Bearer "+otherBuyerToken)
+	foreignResponse := httptest.NewRecorder()
+	router.ServeHTTP(foreignResponse, foreignRequest)
+	if foreignResponse.Code != http.StatusNotFound {
+		t.Fatalf("foreign order detail: expected 404, got %d: %s", foreignResponse.Code, foreignResponse.Body.String())
+	}
+
+	malformedRequest := httptest.NewRequest(http.MethodGet, "/api/v1/orders/not-a-uuid", nil)
+	malformedRequest.Header.Set("Authorization", "Bearer "+token)
+	malformedResponse := httptest.NewRecorder()
+	router.ServeHTTP(malformedResponse, malformedRequest)
+	if malformedResponse.Code != http.StatusNotFound {
+		t.Fatalf("malformed order detail: expected 404, got %d: %s", malformedResponse.Code, malformedResponse.Body.String())
+	}
+
 	var stockAfter, orderCount, paymentCount, movementCount int64
 	db.Raw("SELECT stock_quantity FROM products WHERE public_id = ?", productID).Scan(&stockAfter)
 	db.Raw("SELECT COUNT(*) FROM orders").Scan(&orderCount)

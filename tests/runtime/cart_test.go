@@ -100,4 +100,22 @@ func TestCartItemLifecycle(t *testing.T) {
 	if firstCheckout.Data != secondCheckout.Data {
 		t.Fatalf("checkout retry did not replay original result: first=%+v second=%+v", firstCheckout.Data, secondCheckout.Data)
 	}
+
+	status, body = requestJSON(t, http.MethodGet, baseURL+"/api/v1/orders/"+firstCheckout.Data.PublicID, nil, registerResponse.Data.AccessToken)
+	if status != http.StatusOK {
+		t.Fatalf("order detail: expected 200, got %d: %s", status, body)
+	}
+	var orderDetail struct {
+		Data struct {
+			PublicID      string `json:"public_id"`
+			PaymentStatus string `json:"payment_status"`
+			Items         []struct {
+				Quantity int `json:"quantity"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	decodeJSON(t, body, &orderDetail)
+	if orderDetail.Data.PublicID != firstCheckout.Data.PublicID || orderDetail.Data.PaymentStatus != "pending" || len(orderDetail.Data.Items) != 1 || orderDetail.Data.Items[0].Quantity != 1 {
+		t.Fatalf("unexpected order detail: %+v", orderDetail.Data)
+	}
 }

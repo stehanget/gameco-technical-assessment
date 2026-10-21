@@ -167,6 +167,14 @@ func (r *Repository) Checkout(ctx context.Context, buyerID uint, key, requestHas
 	return response, err
 }
 
+func (r *Repository) FindOrderByPublicID(ctx context.Context, buyerID uint, publicID uuid.UUID) (OrderResponse, error) {
+	var order Order
+	if err := r.db.WithContext(ctx).Where("buyer_id = ? AND public_id = ?", buyerID, publicID).First(&order).Error; err != nil {
+		return OrderResponse{}, err
+	}
+	return loadOrder(r.db.WithContext(ctx), order.ID)
+}
+
 func loadOrder(tx *gorm.DB, orderID uint) (OrderResponse, error) {
 	var order Order
 	if err := tx.First(&order, orderID).Error; err != nil {
@@ -180,7 +188,11 @@ func loadOrder(tx *gorm.DB, orderID uint) (OrderResponse, error) {
 	for _, row := range rows {
 		items = append(items, OrderItemResponse(row))
 	}
-	return OrderResponse{PublicID: order.PublicID, Status: order.Status, TotalAmount: order.TotalAmount, PaymentReference: order.PaymentReference, Items: items, CreatedAt: timestamp.New(order.CreatedAt)}, nil
+	var payment Payment
+	if err := tx.Where("order_id = ?", order.ID).First(&payment).Error; err != nil {
+		return OrderResponse{}, err
+	}
+	return OrderResponse{PublicID: order.PublicID, Status: order.Status, TotalAmount: order.TotalAmount, PaymentReference: order.PaymentReference, PaymentStatus: payment.Status, Items: items, CreatedAt: timestamp.New(order.CreatedAt)}, nil
 }
 
 type orderItemView struct {

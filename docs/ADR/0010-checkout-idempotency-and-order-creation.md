@@ -123,14 +123,14 @@ The shared `commerce.self_purchase_not_allowed` definition is reused when checko
 - [x] Missing `Idempotency-Key` returns `400` with `checkout.idempotency_key_required`.
 - [x] A first checkout creates exactly one order, one payment, and one set of stock movements.
 - [x] A sequential retry with the same buyer, key, and request returns the same result and does not create another order or payment.
-- Two identical requests with the same buyer/key arriving concurrently create one order and both receive the same result.
-- Reusing a key with a different request hash returns `409` with `checkout.idempotency_conflict`.
+- [x] Two identical requests with the same buyer/key arriving concurrently create one order and both receive the same result.
+- [x] Reusing a key with a different request hash returns `409` with `checkout.idempotency_conflict`.
 - [x] Checkout creates the initial local payment state and durable payment reference in the same transaction.
-- A failed checkout must roll back stock, order, payment, stock ledger, and idempotency state.
-- Checkout must reject unavailable cart items without partially reserving stock.
-- Checkout must reject buyer-owned products even if an invalid cart state is inserted directly.
-- Concurrent checkout requests for the last stock unit cannot oversell.
-- Buyer order reads are scoped to the authenticated buyer.
+- [x] A failed checkout must roll back stock, order, payment, stock ledger, and idempotency state.
+- [x] Checkout must reject unavailable cart items without partially reserving stock.
+- [x] Checkout must reject buyer-owned products even if an invalid cart state is inserted directly.
+- [x] Concurrent checkout requests for the last stock unit cannot oversell.
+- [x] Buyer order detail reads are scoped to the authenticated buyer through `GET /api/v1/orders/{order_public_id}`.
 - [x] PostgreSQL integration and real-binary runtime tests prove the sequential transaction behavior.
 
 ## Explicitly deferred

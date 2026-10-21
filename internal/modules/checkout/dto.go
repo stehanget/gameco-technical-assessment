@@ -18,6 +18,7 @@ type OrderResponse struct {
 	Status           string              `json:"status" binding:"required"`
 	TotalAmount      int64               `json:"total_amount" binding:"required"`
 	PaymentReference string              `json:"payment_reference" binding:"required"`
+	PaymentStatus    string              `json:"payment_status" binding:"required"`
 	Items            []OrderItemResponse `json:"items" binding:"required"`
 	CreatedAt        timestamp.Timestamp `json:"created_at" binding:"required" swaggertype:"string" format:"date-time" example:"2026-10-21T10:15:30Z"`
 }

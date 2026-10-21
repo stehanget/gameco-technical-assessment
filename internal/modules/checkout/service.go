@@ -8,6 +8,9 @@ import (
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/faults"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Service struct{ repository *Repository }
@@ -33,6 +36,21 @@ func (s *Service) Create(ctx context.Context, actor auth.Actor, key string) (Ord
 	}
 	if errors.Is(err, errSelfPurchase) {
 		return OrderResponse{}, faults.New(errorconst.SelfPurchaseNotAllowed, err)
+	}
+	if err != nil {
+		return OrderResponse{}, err
+	}
+	return response, nil
+}
+
+func (s *Service) Detail(ctx context.Context, actor auth.Actor, publicID string) (OrderResponse, error) {
+	parsed, err := uuid.Parse(publicID)
+	if err != nil {
+		return OrderResponse{}, faults.New(errorconst.OrderNotFound, err)
+	}
+	response, err := s.repository.FindOrderByPublicID(ctx, actor.UserID, parsed)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return OrderResponse{}, faults.New(errorconst.OrderNotFound, err)
 	}
 	if err != nil {
 		return OrderResponse{}, err

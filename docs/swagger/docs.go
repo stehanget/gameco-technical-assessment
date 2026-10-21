@@ -613,6 +613,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/orders/{order_public_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns an order and its immutable item snapshots for the authenticated buyer. Orders owned by another buyer are not disclosed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Get buyer order detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order public identifier",
+                        "name": "order_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/checkout.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/products": {
             "get": {
                 "description": "Lists active, non-deleted products with filtering, search, sorting, and cursor pagination",
@@ -1734,6 +1793,7 @@ const docTemplate = `{
                 "created_at",
                 "items",
                 "payment_reference",
+                "payment_status",
                 "public_id",
                 "status",
                 "total_amount"
@@ -1751,6 +1811,9 @@ const docTemplate = `{
                     }
                 },
                 "payment_reference": {
+                    "type": "string"
+                },
+                "payment_status": {
                     "type": "string"
                 },
                 "public_id": {
@@ -1969,6 +2032,10 @@ const docTemplate = `{
         {
             "description": "Buyer checkout, stock reservation, order creation, and idempotent retry handling.",
             "name": "checkout"
+        },
+        {
+            "description": "Authenticated buyer order detail and ownership-scoped order reads.",
+            "name": "orders"
         },
         {
             "description": "Public catalog product listing and product detail operations.",
