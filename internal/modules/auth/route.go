@@ -26,7 +26,7 @@ type RouteDependencies struct {
 
 const authRateLimitPolicyName = "auth"
 
-func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
+func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) middleware.SessionResolver {
 	repository := NewRepositoryWithClock(deps.DB, deps.Redis, deps.Clock)
 	service := NewServiceWithClock(repository, deps.Redis, deps.JWTSigner, deps.AppConfig, deps.Clock)
 	handler := NewHandler(service)
@@ -62,4 +62,5 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 		},
 	}, deps.JWTSigner, deps.Clock))
 	protected.GET("/me", middleware.RequirePermissions(permission.AuthMe), handler.Me)
+	return resolve
 }

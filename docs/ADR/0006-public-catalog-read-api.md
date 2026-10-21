@@ -23,7 +23,7 @@ Implement the following public endpoints:
 
 ```text
 GET /api/v1/products
-GET /api/v1/products/{public_id}
+GET /api/v1/products/{product_public_id}
 ```
 
 Both endpoints are accessible without authentication.
@@ -78,7 +78,7 @@ sort_order=desc
 
 Request values are translated through an application allow-list to known SQL columns. They are never interpolated directly into SQL. `price` maps to the persisted integer price column.
 
-Every result set uses `products.id ASC` as a final tie-breaker so identical sort values produce deterministic pagination.
+Every result set uses `products.public_id ASC` as a final tie-breaker so identical sort values produce deterministic pagination without exposing or encoding internal database IDs.
 
 ### Pagination
 
@@ -121,7 +121,7 @@ Draft, inactive, and soft-deleted products are treated as unavailable. A detail 
 
 ## Identifier and response rules
 
-- Product detail uses the UUIDv7 `public_id` path parameter.
+- Product detail uses the UUIDv7 `product_public_id` path parameter.
 - Internal `BIGINT` product, seller, and category IDs are never returned to clients.
 - Category data is represented with its public `slug` and display `name`.
 - Seller information is intentionally omitted from the initial public catalog response. Seller-facing data can be added later through an explicit contract decision.

@@ -11,8 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	catalogconstants "gameco-technical-assessment/internal/constants/catalog"
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/platform/faults"
+	"gameco-technical-assessment/internal/platform/identifier"
 	"gameco-technical-assessment/internal/platform/timestamp"
 
 	"github.com/google/uuid"
@@ -43,6 +45,13 @@ type cursorPosition struct {
 
 type listResult struct {
 	Items      []ProductResponse
+	HasMore    bool
+	NextCursor *string
+	PerPage    int
+}
+
+type sellerListResult struct {
+	Items      []SellerProductResponse
 	HasMore    bool
 	NextCursor *string
 	PerPage    int
@@ -106,6 +115,154 @@ func (s *Service) FindByPublicID(ctx context.Context, publicID string) (ProductR
 		return ProductResponse{}, err
 	}
 	return mapProductView(row)
+}
+
+func (s *Service) ListBySeller(ctx context.Context, sellerID uint, request ListQuery) (sellerListResult, error) {
+	params, cursor, err := normalizeListQuery(request)
+	if err != nil {
+		return sellerListResult{}, err
+	}
+	params.Cursor = cursor
+
+	rows, hasMore, err := s.repository.ListBySeller(ctx, sellerID, params)
+	if err != nil {
+		return sellerListResult{}, err
+	}
+
+	items := make([]SellerProductResponse, 0, len(rows))
+	for _, row := range rows {
+		item, err := mapSellerProductView(row)
+		if err != nil {
+			return sellerListResult{}, err
+		}
+		items = append(items, item)
+	}
+
+	var nextCursor *string
+	if hasMore && len(rows) > 0 {
+		last := rows[len(rows)-1]
+		value, err := cursorValue(params.SortBy, last)
+		if err != nil {
+			return sellerListResult{}, err
+		}
+		encoded, err := encodeCursor(cursorPosition{Version: 1, SortBy: params.SortBy, SortOrder: params.SortOrder, Filter: filterFingerprint(params), Value: value, Tie: last.PublicID})
+		if err != nil {
+			return sellerListResult{}, err
+		}
+		nextCursor = &encoded
+	}
+
+	return sellerListResult{Items: items, HasMore: hasMore, NextCursor: nextCursor, PerPage: params.PerPage}, nil
+}
+
+func (s *Service) FindSellerProductByPublicID(ctx context.Context, sellerID uint, publicID string) (SellerProductResponse, error) {
+	parsed, err := uuid.Parse(publicID)
+	if err != nil {
+		return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+	}
+	row, err := s.repository.FindByPublicIDForSeller(ctx, sellerID, parsed.String())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		}
+		return SellerProductResponse{}, err
+	}
+	return mapSellerProductView(row)
+}
+
+func (s *Service) CategoryOptions(ctx context.Context) ([]CategoryOptionResponse, error) {
+	rows, err := s.repository.ListCategoryOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	options := make([]CategoryOptionResponse, 0, len(rows))
+	for _, row := range rows {
+		options = append(options, CategoryOptionResponse{PublicID: row.PublicID, Slug: row.Slug, Name: row.Name})
+	}
+	return options, nil
+}
+
+func (s *Service) CreateProduct(ctx context.Context, sellerID uint, request CreateProductRequest) (SellerProductResponse, error) {
+	category, err := s.repository.FindCategoryByPublicID(ctx, request.CategoryPublicID.String())
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return SellerProductResponse{}, err
+		}
+		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err)
+	}
+	publicID, err := identifier.NewPublicID()
+	if err != nil {
+		return SellerProductResponse{}, err
+	}
+	product := &Product{PublicID: publicID, SellerID: sellerID, CategoryID: category.ID, Name: strings.TrimSpace(request.Name), Description: strings.TrimSpace(request.Description), PriceAmount: request.PriceAmount, StockQuantity: request.StockQuantity, Status: catalogconstants.ProductStatusActive}
+	if product.Name == "" || strings.TrimSpace(product.Description) == "" {
+		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+	}
+	if product.PriceAmount < 0 || product.StockQuantity < 0 {
+		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+	}
+	if err := s.repository.CreateProduct(ctx, product); err != nil {
+		return SellerProductResponse{}, err
+	}
+	return s.FindSellerProductByPublicID(ctx, sellerID, publicID.String())
+}
+
+func (s *Service) UpdateProduct(ctx context.Context, sellerID uint, publicID string, request UpdateProductRequest) (SellerProductResponse, error) {
+	parsed, err := uuid.Parse(publicID)
+	if err != nil {
+		return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+	}
+	existing, err := s.repository.FindByPublicIDForSeller(ctx, sellerID, parsed.String())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		}
+		return SellerProductResponse{}, err
+	}
+	name := existing.Name
+	description := existing.Description
+	priceAmount := existing.PriceAmount
+	stockQuantity := existing.StockQuantity
+	values := map[string]any{}
+	if request.Name != nil {
+		name = strings.TrimSpace(*request.Name)
+		values["name"] = name
+	}
+	if request.Description != nil {
+		description = strings.TrimSpace(*request.Description)
+		values["description"] = description
+	}
+	if request.PriceAmount != nil {
+		priceAmount = *request.PriceAmount
+		values["price_amount"] = priceAmount
+	}
+	if request.StockQuantity != nil {
+		stockQuantity = *request.StockQuantity
+		values["stock_quantity"] = stockQuantity
+	}
+	if request.CategoryPublicID != nil {
+		category, categoryErr := s.repository.FindCategoryByPublicID(ctx, request.CategoryPublicID.String())
+		if categoryErr != nil {
+			if !errors.Is(categoryErr, gorm.ErrRecordNotFound) {
+				return SellerProductResponse{}, categoryErr
+			}
+			return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, categoryErr)
+		}
+		values["category_id"] = category.ID
+	}
+	if len(values) == 0 {
+		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+	}
+	if name == "" || description == "" || priceAmount < 0 || stockQuantity < 0 {
+		return SellerProductResponse{}, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, nil)
+	}
+	if err := s.repository.UpdateProduct(ctx, sellerID, parsed.String(), values); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
+		}
+		return SellerProductResponse{}, err
+	}
+	return s.FindSellerProductByPublicID(ctx, sellerID, parsed.String())
 }
 
 func normalizeListQuery(request ListQuery) (listParams, *cursorPosition, error) {
@@ -224,6 +381,28 @@ func mapProductView(row productView) (ProductResponse, error) {
 		PriceAmount: row.PriceAmount,
 		Stock:       row.StockQuantity,
 		Category:    CategoryResponse{Slug: row.CategorySlug, Name: row.CategoryName},
+		CreatedAt:   timestamp.New(row.CreatedAt),
+		UpdatedAt:   timestamp.New(row.UpdatedAt),
+	}, nil
+}
+
+func mapSellerProductView(row productView) (SellerProductResponse, error) {
+	publicID, err := uuid.Parse(row.PublicID)
+	if err != nil {
+		return SellerProductResponse{}, err
+	}
+	categoryPublicID, err := uuid.Parse(row.CategoryPublicID)
+	if err != nil {
+		return SellerProductResponse{}, err
+	}
+	return SellerProductResponse{
+		PublicID:    publicID,
+		Name:        row.Name,
+		Description: row.Description,
+		PriceAmount: row.PriceAmount,
+		Stock:       row.StockQuantity,
+		Status:      row.Status,
+		Category:    SellerCategory{PublicID: categoryPublicID, Slug: row.CategorySlug, Name: row.CategoryName},
 		CreatedAt:   timestamp.New(row.CreatedAt),
 		UpdatedAt:   timestamp.New(row.UpdatedAt),
 	}, nil

@@ -125,6 +125,34 @@ definitions:
     - public_id
     - roles
     type: object
+  catalog.CategoryOptionResponse:
+    properties:
+      name:
+        type: string
+      public_id:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - public_id
+    - slug
+    type: object
+  catalog.CategoryOptionsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/catalog.CategoryOptionResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
   catalog.CategoryResponse:
     properties:
       name:
@@ -134,6 +162,26 @@ definitions:
     required:
     - name
     - slug
+    type: object
+  catalog.CreateProductRequest:
+    properties:
+      category_public_id:
+        type: string
+      description:
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      price_amount:
+        minimum: 0
+        type: integer
+      stock_quantity:
+        minimum: 0
+        type: integer
+    required:
+    - category_public_id
+    - description
+    - name
     type: object
   catalog.ItemResponse:
     properties:
@@ -212,6 +260,98 @@ definitions:
     - public_id
     - stock_quantity
     - updated_at
+    type: object
+  catalog.SellerCategory:
+    properties:
+      name:
+        type: string
+      public_id:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - public_id
+    - slug
+    type: object
+  catalog.SellerItemResponse:
+    properties:
+      data:
+        $ref: '#/definitions/catalog.SellerProductResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  catalog.SellerListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/catalog.SellerProductResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/catalog.ListMeta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  catalog.SellerProductResponse:
+    properties:
+      category:
+        $ref: '#/definitions/catalog.SellerCategory'
+      created_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      price_amount:
+        type: integer
+      public_id:
+        type: string
+      status:
+        type: string
+      stock_quantity:
+        type: integer
+      updated_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+    required:
+    - category
+    - created_at
+    - description
+    - name
+    - price_amount
+    - public_id
+    - status
+    - stock_quantity
+    - updated_at
+    type: object
+  catalog.UpdateProductRequest:
+    properties:
+      category_public_id:
+        type: string
+      description:
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      price_amount:
+        minimum: 0
+        type: integer
+      stock_quantity:
+        minimum: 0
+        type: integer
     type: object
   example.CreateRequest:
     properties:
@@ -463,6 +603,24 @@ paths:
       summary: Register user
       tags:
       - auth
+  /api/v1/categories/options:
+    get:
+      description: Lists canonical categories for public catalog filters and seller
+        product forms
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.CategoryOptionsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: List category options
+      tags:
+      - categories
   /api/v1/examples:
     get:
       description: Returns example records from the boilerplate module
@@ -634,6 +792,206 @@ paths:
       summary: Get public product
       tags:
       - products
+  /api/v1/seller/products:
+    get:
+      description: Lists non-deleted products owned by the authenticated seller
+      parameters:
+      - description: Case-insensitive search over product name and description
+        in: query
+        name: q
+        type: string
+      - description: Category slug
+        in: query
+        name: category
+        type: string
+      - description: Minimum price amount
+        in: query
+        name: min_price
+        type: integer
+      - description: Maximum price amount
+        in: query
+        name: max_price
+        type: integer
+      - default: created_at
+        description: Sort field
+        enum:
+        - created_at
+        - name
+        - price
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Opaque cursor returned by the previous response
+        in: query
+        name: cursor
+        type: string
+      - default: 20
+        description: Number of records per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.SellerListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List seller products
+      tags:
+      - seller-products
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/catalog.SellerItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create seller product
+      tags:
+      - seller-products
+  /api/v1/seller/products/{product_public_id}:
+    get:
+      description: Returns one non-deleted product owned by the authenticated seller
+      parameters:
+      - description: Product public identifier
+        format: uuid
+        in: path
+        name: product_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.SellerItemResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get seller product
+      tags:
+      - seller-products
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product public identifier
+        format: uuid
+        in: path
+        name: product_public_id
+        required: true
+        type: string
+      - description: Product fields
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.SellerItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update seller product
+      tags:
+      - seller-products
   /health:
     get:
       description: Returns liveness status

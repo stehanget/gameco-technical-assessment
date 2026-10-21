@@ -85,6 +85,35 @@ func RequirePermissions(required ...string) gin.HandlerFunc {
 	}
 }
 
+func RequireRoles(required ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		value, ok := c.Get(AccessKey)
+		if !ok {
+			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
+			c.Abort()
+			return
+		}
+		access, ok := value.(Access)
+		if !ok {
+			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
+			c.Abort()
+			return
+		}
+		roles := make(map[string]struct{}, len(access.Roles))
+		for _, role := range access.Roles {
+			roles[role] = struct{}{}
+		}
+		for _, requiredRole := range required {
+			if _, ok := roles[requiredRole]; ok {
+				c.Next()
+				return
+			}
+		}
+		httpx.HandleError(c, faults.New(faults.KindForbidden, errorconst.AuthInsufficientPermissions, nil))
+		c.Abort()
+	}
+}
+
 func ClaimsFromContext(c *gin.Context) (*platformauth.AccessTokenClaims, bool) {
 	claims, ok := c.Get(ClaimsKey)
 	if !ok {

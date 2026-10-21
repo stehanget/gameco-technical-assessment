@@ -147,6 +147,21 @@ func TestAuthRegisterLoginThenMe(t *testing.T) {
 		t.Fatalf("me: expected buyer and seller roles, got %v", mePayload.Data.Roles)
 	}
 
+	categoryOptionsRequest := httptest.NewRequest(http.MethodGet, "/api/v1/categories/options", nil)
+	categoryOptionsResponse := httptest.NewRecorder()
+	router.ServeHTTP(categoryOptionsResponse, categoryOptionsRequest)
+	if categoryOptionsResponse.Code != http.StatusOK {
+		t.Fatalf("category options: expected status 200, got %d: %s", categoryOptionsResponse.Code, categoryOptionsResponse.Body.String())
+	}
+
+	sellerProductsRequest := httptest.NewRequest(http.MethodGet, "/api/v1/seller/products", nil)
+	sellerProductsRequest.Header.Set("Authorization", "Bearer "+refreshPayload.Data.AccessToken)
+	sellerProductsResponse := httptest.NewRecorder()
+	router.ServeHTTP(sellerProductsResponse, sellerProductsRequest)
+	if sellerProductsResponse.Code != http.StatusOK {
+		t.Fatalf("seller products: expected status 200, got %d: %s", sellerProductsResponse.Code, sellerProductsResponse.Body.String())
+	}
+
 	reusedRefreshRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", bytes.NewReader(refreshBody))
 	reusedRefreshRequest.Header.Set("Content-Type", "application/json")
 	reusedRefreshResponse := httptest.NewRecorder()

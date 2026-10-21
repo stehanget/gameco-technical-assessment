@@ -1,12 +1,19 @@
 package catalog
 
 import (
+	"gameco-technical-assessment/internal/constants/permission"
+	"gameco-technical-assessment/internal/constants/role"
+	platformauth "gameco-technical-assessment/internal/platform/auth"
+	"gameco-technical-assessment/internal/platform/middleware"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 type RouteDependencies struct {
-	DB *gorm.DB
+	DB            *gorm.DB
+	JWTSigner     *platformauth.JWTManager
+	ResolveAccess middleware.SessionResolver
 }
 
 func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
@@ -17,4 +24,15 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	group := router.Group("/products")
 	group.GET("", handler.List)
 	group.GET("/:product_public_id", handler.Detail)
+
+	router.GET("/categories/options", handler.CategoryOptions)
+
+	seller := router.Group("/seller/products")
+	seller.Use(middleware.Auth(deps.JWTSigner, deps.ResolveAccess))
+	seller.Use(middleware.RequireRoles(role.Seller))
+	seller.Use(middleware.RequirePermissions(permission.ProductRead))
+	seller.GET("", handler.SellerList)
+	seller.GET("/:product_public_id", handler.SellerDetail)
+	seller.POST("", middleware.RequirePermissions(permission.ProductCreate), handler.Create)
+	seller.PATCH("/:product_public_id", middleware.RequirePermissions(permission.ProductUpdate), handler.Update)
 }

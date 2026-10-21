@@ -47,7 +47,7 @@ func NewRouter(container *Container) *gin.Engine {
 		},
 	}, container.JWTSigner, container.Clock))
 
-	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
+	resolveAccess := moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
 		DB:        container.DB,
 		Redis:     container.Redis,
 		JWTSigner: container.JWTSigner,
@@ -55,7 +55,11 @@ func NewRouter(container *Container) *gin.Engine {
 		RateLimit: container.Config.RateLimit,
 		Clock:     container.Clock,
 	})
-	modulecatalog.RegisterRoutes(api, modulecatalog.RouteDependencies{DB: container.DB})
+	modulecatalog.RegisterRoutes(api, modulecatalog.RouteDependencies{
+		DB:            container.DB,
+		JWTSigner:     container.JWTSigner,
+		ResolveAccess: resolveAccess,
+	})
 
 	return router
 }

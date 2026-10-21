@@ -221,6 +221,32 @@
                 }
             }
         },
+        "/api/v1/categories/options": {
+            "get": {
+                "description": "Lists canonical categories for public catalog filters and seller product forms",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categories"
+                ],
+                "summary": "List category options",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CategoryOptionsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/examples": {
             "get": {
                 "description": "Returns example records from the boilerplate module",
@@ -475,6 +501,312 @@
                 }
             }
         },
+        "/api/v1/seller/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists non-deleted products owned by the authenticated seller",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seller-products"
+                ],
+                "summary": "List seller products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Case-insensitive search over product name and description",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category slug",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Minimum price amount",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum price amount",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "created_at",
+                            "name",
+                            "price"
+                        ],
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort direction",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque cursor returned by the previous response",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of records per page",
+                        "name": "per_page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.SellerListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seller-products"
+                ],
+                "summary": "Create seller product",
+                "parameters": [
+                    {
+                        "description": "Product payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.SellerItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/seller/products/{product_public_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns one non-deleted product owned by the authenticated seller",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seller-products"
+                ],
+                "summary": "Get seller product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product public identifier",
+                        "name": "product_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.SellerItemResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seller-products"
+                ],
+                "summary": "Update seller product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product public identifier",
+                        "name": "product_public_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Product fields",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.UpdateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.SellerItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns liveness status",
@@ -679,6 +1011,47 @@
                 }
             }
         },
+        "catalog.CategoryOptionResponse": {
+            "type": "object",
+            "required": [
+                "name",
+                "public_id",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.CategoryOptionsResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.CategoryOptionResponse"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/httpx.Meta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "catalog.CategoryResponse": {
             "type": "object",
             "required": [
@@ -691,6 +1064,34 @@
                 },
                 "slug": {
                     "type": "string"
+                }
+            }
+        },
+        "catalog.CreateProductRequest": {
+            "type": "object",
+            "required": [
+                "category_public_id",
+                "description",
+                "name"
+            ],
+            "properties": {
+                "category_public_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "price_amount": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "stock_quantity": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -800,6 +1201,136 @@
                     "type": "string",
                     "format": "date-time",
                     "example": "2026-10-21T10:15:30Z"
+                }
+            }
+        },
+        "catalog.SellerCategory": {
+            "type": "object",
+            "required": [
+                "name",
+                "public_id",
+                "slug"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.SellerItemResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/catalog.SellerProductResponse"
+                },
+                "meta": {
+                    "$ref": "#/definitions/httpx.Meta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "catalog.SellerListResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.SellerProductResponse"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/catalog.ListMeta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "catalog.SellerProductResponse": {
+            "type": "object",
+            "required": [
+                "category",
+                "created_at",
+                "description",
+                "name",
+                "price_amount",
+                "public_id",
+                "status",
+                "stock_quantity",
+                "updated_at"
+            ],
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/catalog.SellerCategory"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-21T10:15:30Z"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_amount": {
+                    "type": "integer"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "stock_quantity": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-21T10:15:30Z"
+                }
+            }
+        },
+        "catalog.UpdateProductRequest": {
+            "type": "object",
+            "properties": {
+                "category_public_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "price_amount": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "stock_quantity": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },

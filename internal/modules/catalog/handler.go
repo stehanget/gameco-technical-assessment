@@ -2,10 +2,12 @@ package catalog
 
 import (
 	"net/http"
+	"strconv"
 
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/httpx"
+	"gameco-technical-assessment/internal/platform/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -77,4 +79,176 @@ func (h *Handler) Detail(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, http.StatusOK, response)
+}
+
+// CategoryOptions godoc
+// @Summary List category options
+// @Description Lists canonical categories for public catalog filters and seller product forms
+// @Tags categories
+// @Produce json
+// @Success 200 {object} CategoryOptionsResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/categories/options [get]
+func (h *Handler) CategoryOptions(c *gin.Context) {
+	options, err := h.service.CategoryOptions(c.Request.Context())
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, options)
+}
+
+// SellerList godoc
+// @Summary List seller products
+// @Description Lists non-deleted products owned by the authenticated seller
+// @Tags seller-products
+// @Produce json
+// @Security BearerAuth
+// @Param q query string false "Case-insensitive search over product name and description"
+// @Param category query string false "Category slug"
+// @Param min_price query int false "Minimum price amount"
+// @Param max_price query int false "Maximum price amount"
+// @Param sort_by query string false "Sort field" Enums(created_at,name,price) default(created_at)
+// @Param sort_order query string false "Sort direction" Enums(asc,desc) default(desc)
+// @Param cursor query string false "Opaque cursor returned by the previous response"
+// @Param per_page query int false "Number of records per page" minimum(1) maximum(100) default(20)
+// @Success 200 {object} SellerListResponse
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 401 {object} httpx.ErrorResponse
+// @Failure 403 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/seller/products [get]
+func (h *Handler) SellerList(c *gin.Context) {
+	sellerID, err := sellerIDFromContext(c)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	var request ListQuery
+	if err := c.ShouldBindQuery(&request); err != nil {
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		return
+	}
+	result, err := h.service.ListBySeller(c.Request.Context(), sellerID, request)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	requestID, _ := c.Get(middleware.RequestIDKey)
+	requestIDValue, _ := requestID.(string)
+	var requestIDPointer *string
+	if requestIDValue != "" {
+		requestIDPointer = &requestIDValue
+	}
+	httpx.SuccessWithMeta(c, http.StatusOK, result.Items, ListMeta{
+		RequestID:  requestIDPointer,
+		PerPage:    result.PerPage,
+		HasMore:    result.HasMore,
+		NextCursor: result.NextCursor,
+	})
+}
+
+// SellerDetail godoc
+// @Summary Get seller product
+// @Description Returns one non-deleted product owned by the authenticated seller
+// @Tags seller-products
+// @Produce json
+// @Security BearerAuth
+// @Param product_public_id path string true "Product public identifier" format(uuid)
+// @Success 200 {object} SellerItemResponse
+// @Failure 401 {object} httpx.ErrorResponse
+// @Failure 403 {object} httpx.ErrorResponse
+// @Failure 404 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/seller/products/{product_public_id} [get]
+func (h *Handler) SellerDetail(c *gin.Context) {
+	sellerID, err := sellerIDFromContext(c)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	response, err := h.service.FindSellerProductByPublicID(c.Request.Context(), sellerID, c.Param("product_public_id"))
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, response)
+}
+
+// Create godoc
+// @Summary Create seller product
+// @Tags seller-products
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateProductRequest true "Product payload"
+// @Success 201 {object} SellerItemResponse
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 401 {object} httpx.ErrorResponse
+// @Failure 403 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/seller/products [post]
+func (h *Handler) Create(c *gin.Context) {
+	sellerID, err := sellerIDFromContext(c)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	var request CreateProductRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		return
+	}
+	response, err := h.service.CreateProduct(c.Request.Context(), sellerID, request)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusCreated, response)
+}
+
+// Update godoc
+// @Summary Update seller product
+// @Tags seller-products
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param product_public_id path string true "Product public identifier" format(uuid)
+// @Param request body UpdateProductRequest true "Product fields"
+// @Success 200 {object} SellerItemResponse
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 401 {object} httpx.ErrorResponse
+// @Failure 403 {object} httpx.ErrorResponse
+// @Failure 404 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/seller/products/{product_public_id} [patch]
+func (h *Handler) Update(c *gin.Context) {
+	sellerID, err := sellerIDFromContext(c)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	var request UpdateProductRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
+		return
+	}
+	response, err := h.service.UpdateProduct(c.Request.Context(), sellerID, c.Param("product_public_id"), request)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, response)
+}
+
+func sellerIDFromContext(c *gin.Context) (uint, error) {
+	claims, ok := middleware.ClaimsFromContext(c)
+	if !ok {
+		return 0, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil)
+	}
+	userID, err := strconv.ParseUint(claims.UserID, 10, 64)
+	if err != nil || userID == 0 {
+		return 0, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, err)
+	}
+	return uint(userID), nil
 }

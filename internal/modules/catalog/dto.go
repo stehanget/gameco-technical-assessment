@@ -1,6 +1,9 @@
 package catalog
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"gameco-technical-assessment/internal/platform/httpx"
 	"gameco-technical-assessment/internal/platform/timestamp"
 
@@ -18,6 +21,41 @@ type ListQuery struct {
 	PerPage   int    `form:"per_page"`
 }
 
+type CreateProductRequest struct {
+	Name             string    `json:"name" binding:"required,max=255"`
+	Description      string    `json:"description" binding:"required"`
+	PriceAmount      int64     `json:"price_amount" binding:"min=0"`
+	StockQuantity    int       `json:"stock_quantity" binding:"min=0"`
+	CategoryPublicID uuid.UUID `json:"category_public_id" binding:"required"`
+}
+
+type UpdateProductRequest struct {
+	Name             *string    `json:"name" binding:"omitempty,max=255"`
+	Description      *string    `json:"description"`
+	PriceAmount      *int64     `json:"price_amount" binding:"omitempty,min=0"`
+	StockQuantity    *int       `json:"stock_quantity" binding:"omitempty,min=0"`
+	CategoryPublicID *uuid.UUID `json:"category_public_id"`
+}
+
+func (r *UpdateProductRequest) UnmarshalJSON(data []byte) error {
+	type requestAlias UpdateProductRequest
+	var decoded requestAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	for _, field := range []string{"name", "description", "price_amount", "stock_quantity", "category_public_id"} {
+		if value, ok := fields[field]; ok && string(value) == "null" {
+			return fmt.Errorf("%s must not be null", field)
+		}
+	}
+	*r = UpdateProductRequest(decoded)
+	return nil
+}
+
 type ProductResponse struct {
 	PublicID    uuid.UUID           `json:"public_id" binding:"required"`
 	Name        string              `json:"name" binding:"required"`
@@ -27,6 +65,24 @@ type ProductResponse struct {
 	Category    CategoryResponse    `json:"category" binding:"required"`
 	CreatedAt   timestamp.Timestamp `json:"created_at" binding:"required" swaggertype:"string" format:"date-time" example:"2026-10-21T10:15:30Z"`
 	UpdatedAt   timestamp.Timestamp `json:"updated_at" binding:"required" swaggertype:"string" format:"date-time" example:"2026-10-21T10:15:30Z"`
+}
+
+type SellerProductResponse struct {
+	PublicID    uuid.UUID           `json:"public_id" binding:"required"`
+	Name        string              `json:"name" binding:"required"`
+	Description string              `json:"description" binding:"required"`
+	PriceAmount int64               `json:"price_amount" binding:"required"`
+	Stock       int                 `json:"stock_quantity" binding:"required"`
+	Status      string              `json:"status" binding:"required"`
+	Category    SellerCategory      `json:"category" binding:"required"`
+	CreatedAt   timestamp.Timestamp `json:"created_at" binding:"required" swaggertype:"string" format:"date-time" example:"2026-10-21T10:15:30Z"`
+	UpdatedAt   timestamp.Timestamp `json:"updated_at" binding:"required" swaggertype:"string" format:"date-time" example:"2026-10-21T10:15:30Z"`
+}
+
+type SellerCategory struct {
+	PublicID uuid.UUID `json:"public_id" binding:"required"`
+	Slug     string    `json:"slug" binding:"required"`
+	Name     string    `json:"name" binding:"required"`
 }
 
 type CategoryResponse struct {
@@ -51,4 +107,28 @@ type ItemResponse struct {
 	Success bool            `json:"success" binding:"required"`
 	Data    ProductResponse `json:"data" binding:"required"`
 	Meta    *httpx.Meta     `json:"meta" binding:"required"`
+}
+
+type SellerListResponse struct {
+	Success bool                    `json:"success" binding:"required"`
+	Data    []SellerProductResponse `json:"data" binding:"required"`
+	Meta    ListMeta                `json:"meta" binding:"required"`
+}
+
+type SellerItemResponse struct {
+	Success bool                  `json:"success" binding:"required"`
+	Data    SellerProductResponse `json:"data" binding:"required"`
+	Meta    *httpx.Meta           `json:"meta" binding:"required"`
+}
+
+type CategoryOptionResponse struct {
+	PublicID uuid.UUID `json:"public_id" binding:"required"`
+	Slug     string    `json:"slug" binding:"required"`
+	Name     string    `json:"name" binding:"required"`
+}
+
+type CategoryOptionsResponse struct {
+	Success bool                     `json:"success" binding:"required"`
+	Data    []CategoryOptionResponse `json:"data" binding:"required"`
+	Meta    *httpx.Meta              `json:"meta" binding:"required"`
 }
