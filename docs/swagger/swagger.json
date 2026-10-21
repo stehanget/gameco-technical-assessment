@@ -430,6 +430,70 @@
                 }
             }
         },
+        "/api/v1/checkout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates one pending-payment order from the authenticated buyer's active cart. Retries with the same Idempotency-Key replay the original result.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checkout"
+                ],
+                "summary": "Checkout active cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client-generated idempotency key",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/checkout.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/examples": {
             "get": {
                 "description": "Returns example records from the boilerplate module",
@@ -1634,6 +1698,88 @@
                 }
             }
         },
+        "checkout.OrderItemResponse": {
+            "type": "object",
+            "required": [
+                "product_name",
+                "product_public_id",
+                "quantity",
+                "subtotal_amount",
+                "unit_price_amount"
+            ],
+            "properties": {
+                "product_name": {
+                    "type": "string"
+                },
+                "product_public_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "subtotal_amount": {
+                    "type": "integer"
+                },
+                "unit_price_amount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "checkout.OrderResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "items",
+                "payment_reference",
+                "public_id",
+                "status",
+                "total_amount"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-21T10:15:30Z"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/checkout.OrderItemResponse"
+                    }
+                },
+                "payment_reference": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "checkout.Response": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/checkout.OrderResponse"
+                },
+                "meta": {
+                    "$ref": "#/definitions/httpx.Meta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "example.CreateRequest": {
             "type": "object",
             "required": [
@@ -1816,6 +1962,10 @@
         {
             "description": "Buyer cart lifecycle, ownership, quantity replacement, and current stock validation.",
             "name": "cart"
+        },
+        {
+            "description": "Buyer checkout, stock reservation, order creation, and idempotent retry handling.",
+            "name": "checkout"
         },
         {
             "description": "Public catalog product listing and product detail operations.",

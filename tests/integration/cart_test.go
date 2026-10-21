@@ -63,7 +63,8 @@ type cartEnvelope struct {
 }
 
 type cartPayload struct {
-	Items []cartItem `json:"items"`
+	Items            []cartItem `json:"items"`
+	UnavailableItems []cartItem `json:"unavailable_items"`
 }
 
 type cartItem struct {

@@ -84,4 +84,19 @@ var (
 	SelfPurchaseNotAllowed = faults.Definition{
 		Code: "commerce.self_purchase_not_allowed", Kind: faults.KindConflict, Message: "you cannot purchase your own product",
 	}
+	CheckoutIdempotencyKeyRequired = faults.Definition{
+		Code: "checkout.idempotency_key_required", Kind: faults.KindInvalidInput, Message: "idempotency key is required",
+	}
+	CheckoutIdempotencyConflict = faults.Definition{
+		Code: "checkout.idempotency_conflict", Kind: faults.KindConflict, Message: "idempotency key was used with a different request",
+	}
+	CheckoutEmptyCart = faults.Definition{
+		Code: "checkout.empty_cart", Kind: faults.KindConflict, Message: "cart is empty",
+	}
+	CheckoutCartUnavailable = faults.Definition{
+		Code: "checkout.cart_unavailable", Kind: faults.KindConflict, Message: "cart contains unavailable items",
+	}
+	CheckoutInsufficientStock = faults.Definition{
+		Code: "checkout.insufficient_stock", Kind: faults.KindConflict, Message: "requested quantity exceeds available stock",
+	}
 )

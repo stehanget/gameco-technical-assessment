@@ -17,6 +17,8 @@
 // @tag.description Liveness endpoint for runtime health checks.
 // @tag.name cart
 // @tag.description Buyer cart lifecycle, ownership, quantity replacement, and current stock validation.
+// @tag.name checkout
+// @tag.description Buyer checkout, stock reservation, order creation, and idempotent retry handling.
 // @tag.name products
 // @tag.description Public catalog product listing and product detail operations.
 // @tag.name categories

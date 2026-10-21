@@ -22,7 +22,7 @@ Use a PostgreSQL transaction with a conditional stock decrement as the primary i
 The checkout flow must:
 
 1. Claim or create the buyer's checkout idempotency record under a unique `(buyer_id, idempotency_key)` constraint.
-2. Validate that a repeated key has the same request hash.
+2. Validate that a repeated key has the same request hash; replay the committed result for the same hash and reject a different hash with a conflict.
 3. Lock/conditionally decrement each product in a deterministic product-ID order.
 4. Reject the transaction if any decrement affects zero rows.
 5. Create the order and immutable order-item snapshots in the same transaction.
@@ -59,4 +59,4 @@ The exact SQL shape may use `UPDATE ... WHERE stock_quantity >= $quantity RETURN
 - `docs/schema.dbml`: `products`, `orders`, `order_items`, `checkout_idempotency_keys`, and `stock_movements`.
 - `docs/technical-assessment.md`: stock race-condition and checkout idempotency requirements.
 
-The marketplace checkout code and tests are not implemented yet; this ADR records the accepted design rather than claiming runtime proof.
+The initial marketplace checkout code is implemented in `internal/modules/checkout`. SQLite E2E, PostgreSQL integration, and real-binary runtime tests prove sequential checkout, idempotent replay, stock reservation, payment creation, and stock-ledger writes. A dedicated concurrent last-stock test and concurrent same-key retry test remain required before claiming full contention coverage.

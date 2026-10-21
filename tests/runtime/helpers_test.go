@@ -48,6 +48,33 @@ func requestJSON(t *testing.T, method string, url string, body io.Reader, token 
 	return response.StatusCode, responseBody
 }
 
+func requestJSONWithHeaders(t *testing.T, method string, url string, body io.Reader, token string, headers map[string]string) (int, []byte) {
+	t.Helper()
+	request, err := http.NewRequest(method, url, body)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	if token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("request %s %s: %v", method, url, err)
+	}
+	defer response.Body.Close()
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response %s %s: %v", method, url, err)
+	}
+	return response.StatusCode, responseBody
+}
+
 func decodeJSON(t *testing.T, body []byte, target any) {
 	t.Helper()
 	if err := json.Unmarshal(body, target); err != nil {

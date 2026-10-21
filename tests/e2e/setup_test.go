@@ -14,6 +14,7 @@ import (
 	authmodule "gameco-technical-assessment/internal/modules/auth"
 	cartmodule "gameco-technical-assessment/internal/modules/cart"
 	catalogmodule "gameco-technical-assessment/internal/modules/catalog"
+	checkoutmodule "gameco-technical-assessment/internal/modules/checkout"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/seeds"
 
@@ -60,6 +61,11 @@ func newE2ERouterWithDB(t *testing.T) (*gin.Engine, *gorm.DB) {
 		&catalogmodule.Product{},
 		&cartmodule.Cart{},
 		&cartmodule.CartItem{},
+		&checkoutmodule.Order{},
+		&checkoutmodule.OrderItem{},
+		&checkoutmodule.Payment{},
+		&checkoutmodule.IdempotencyKey{},
+		&checkoutmodule.StockMovement{},
 	); err != nil {
 		t.Fatalf("migrate sqlite database: %v", err)
 	}

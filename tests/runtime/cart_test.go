@@ -69,4 +69,35 @@ func TestCartItemLifecycle(t *testing.T) {
 	if len(cart.Data.Items) != 1 || cart.Data.Items[0].ProductPublicID != productID || cart.Data.Items[0].Quantity != 1 {
 		t.Fatalf("unexpected cart: %+v", cart.Data.Items)
 	}
+
+	checkoutRequest := bytes.NewBuffer(nil)
+	status, body = requestJSONWithHeaders(t, http.MethodPost, baseURL+"/api/v1/checkout", checkoutRequest, registerResponse.Data.AccessToken, map[string]string{"Idempotency-Key": "runtime-checkout-key"})
+	if status != http.StatusCreated {
+		t.Fatalf("checkout: expected 201, got %d: %s", status, body)
+	}
+	var firstCheckout struct {
+		Data struct {
+			PublicID         string `json:"public_id"`
+			PaymentReference string `json:"payment_reference"`
+		} `json:"data"`
+	}
+	decodeJSON(t, body, &firstCheckout)
+	if firstCheckout.Data.PublicID == "" || firstCheckout.Data.PaymentReference == "" {
+		t.Fatalf("checkout: missing order/payment result: %+v", firstCheckout.Data)
+	}
+
+	status, body = requestJSONWithHeaders(t, http.MethodPost, baseURL+"/api/v1/checkout", bytes.NewBuffer(nil), registerResponse.Data.AccessToken, map[string]string{"Idempotency-Key": "runtime-checkout-key"})
+	if status != http.StatusCreated {
+		t.Fatalf("checkout retry: expected 201, got %d: %s", status, body)
+	}
+	var secondCheckout struct {
+		Data struct {
+			PublicID         string `json:"public_id"`
+			PaymentReference string `json:"payment_reference"`
+		} `json:"data"`
+	}
+	decodeJSON(t, body, &secondCheckout)
+	if firstCheckout.Data != secondCheckout.Data {
+		t.Fatalf("checkout retry did not replay original result: first=%+v second=%+v", firstCheckout.Data, secondCheckout.Data)
+	}
 }

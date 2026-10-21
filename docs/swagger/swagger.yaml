@@ -437,6 +437,64 @@ definitions:
         minimum: 0
         type: integer
     type: object
+  checkout.OrderItemResponse:
+    properties:
+      product_name:
+        type: string
+      product_public_id:
+        type: string
+      quantity:
+        type: integer
+      subtotal_amount:
+        type: integer
+      unit_price_amount:
+        type: integer
+    required:
+    - product_name
+    - product_public_id
+    - quantity
+    - subtotal_amount
+    - unit_price_amount
+    type: object
+  checkout.OrderResponse:
+    properties:
+      created_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/checkout.OrderItemResponse'
+        type: array
+      payment_reference:
+        type: string
+      public_id:
+        type: string
+      status:
+        type: string
+      total_amount:
+        type: integer
+    required:
+    - created_at
+    - items
+    - payment_reference
+    - public_id
+    - status
+    - total_amount
+    type: object
+  checkout.Response:
+    properties:
+      data:
+        $ref: '#/definitions/checkout.OrderResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
   example.CreateRequest:
     properties:
       name:
@@ -824,6 +882,48 @@ paths:
       summary: List category options
       tags:
       - categories
+  /api/v1/checkout:
+    post:
+      description: Creates one pending-payment order from the authenticated buyer's
+        active cart. Retries with the same Idempotency-Key replay the original result.
+      parameters:
+      - description: Client-generated idempotency key
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/checkout.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Checkout active cart
+      tags:
+      - checkout
   /api/v1/examples:
     get:
       description: Returns example records from the boilerplate module
@@ -1228,6 +1328,9 @@ tags:
 - description: Buyer cart lifecycle, ownership, quantity replacement, and current
     stock validation.
   name: cart
+- description: Buyer checkout, stock reservation, order creation, and idempotent retry
+    handling.
+  name: checkout
 - description: Public catalog product listing and product detail operations.
   name: products
 - description: Canonical category options used by public catalog filters and seller
