@@ -46,11 +46,22 @@ The quantity replaces the existing quantity for that product. It is not a delta 
 ### Product and stock rules
 
 - Only active, non-deleted products can be added.
+- A buyer cannot add or update a product owned by the same authenticated user.
 - The service checks current stock during add/update.
 - Cart mutation does not reserve or decrement stock.
 - A quantity greater than current stock is rejected with a conflict response.
 - Checkout owns atomic stock reservation/decrement according to ADR-0002.
+- Checkout must repeat the self-purchase validation inside its transaction rather than trusting cart state.
 - Cart response prices are read from the current product price; checkout must later create immutable order-item price snapshots.
+
+Cart mutation errors use the following stable definitions:
+
+| Condition | HTTP status | Public code |
+| --- | ---: | --- |
+| malformed `product_public_id` | 400 | `common.invalid_request` |
+| unknown, inactive, or soft-deleted product | 404 | `cart.product_not_found` |
+| requested quantity exceeds current stock | 409 | `cart.insufficient_stock` |
+| product belongs to the authenticated buyer | 409 | `commerce.self_purchase_not_allowed` |
 
 ### Response contract
 
@@ -102,6 +113,10 @@ The response always serializes both `items` and `unavailable_items` as arrays, i
 - Authenticated buyer can add, read, replace, and remove an item.
 - A buyer cannot affect another buyer's active cart.
 - Inactive or soft-deleted products cannot be added.
+- A buyer cannot add their own product.
+- A malformed product public ID returns `400` with `common.invalid_request`.
+- An unknown product public ID returns `404` with `cart.product_not_found`.
+- A quantity above current stock returns `409` with `cart.insufficient_stock`.
 - Quantity validation rejects zero, negative, and above-stock values.
 - Cart mutation does not change `products.stock_quantity`.
 - Empty cart returns `items: []`.

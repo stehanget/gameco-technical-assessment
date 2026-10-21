@@ -15,6 +15,14 @@
 // @tag.description Development-only example endpoints used to validate the backend module foundation.
 // @tag.name health
 // @tag.description Liveness endpoint for runtime health checks.
+// @tag.name cart
+// @tag.description Buyer cart lifecycle, ownership, quantity replacement, and current stock validation.
+// @tag.name products
+// @tag.description Public catalog product listing and product detail operations.
+// @tag.name categories
+// @tag.description Canonical category options used by public catalog filters and seller product forms.
+// @tag.name seller-products
+// @tag.description Authenticated seller product management with ownership authorization.
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

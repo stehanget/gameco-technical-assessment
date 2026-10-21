@@ -1815,6 +1815,22 @@ const docTemplate = `{
         {
             "description": "Liveness endpoint for runtime health checks.",
             "name": "health"
+        },
+        {
+            "description": "Buyer cart lifecycle, ownership, quantity replacement, and current stock validation.",
+            "name": "cart"
+        },
+        {
+            "description": "Public catalog product listing and product detail operations.",
+            "name": "products"
+        },
+        {
+            "description": "Canonical category options used by public catalog filters and seller product forms.",
+            "name": "categories"
+        },
+        {
+            "description": "Authenticated seller product management with ownership authorization.",
+            "name": "seller-products"
         }
     ]
 }`

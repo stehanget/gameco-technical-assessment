@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, and buyer cart item management. Checkout, order, payment, stock-ledger, and audit runtime flows remain implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, and buyer cart item management. Cart ownership, current-stock validation, cart-specific error contracts, and self-purchase prevention are implemented. Checkout, order, payment, stock-ledger, and audit runtime flows remain implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
 
 ## Assets
 
@@ -53,7 +53,7 @@ The repository currently has implemented authentication, database-backed session
 | Request tracing | Request ID middleware exposes `X-Request-ID` | `internal/platform/middleware/request_id.go` |
 | Schema integrity | Internal numeric IDs, unique public IDs, join-table keys, and declared foreign keys are documented/migrated | `migrations/`, `docs/schema.dbml` |
 | Regression coverage | Register → login → refresh rotation → `/auth/me`, including refresh-token reuse handling, is covered by a black-box E2E test | `tests/e2e/auth_test.go` |
-| Error responses | Shared error envelope, status-based safe mapper, typed auth errors, request ID propagation, structured logging, panic recovery, and handler migration away from raw error responses | `internal/platform/httpx/response.go`, `internal/platform/httpx/error_test.go`, `internal/platform/faults/error.go`, `internal/constants/error/codes.go`, `internal/constants/error/messages.go`, `internal/platform/middleware/request_id.go`, `internal/platform/middleware/logging.go`, `internal/platform/middleware/recovery.go`, `docs/ADR/0005-centralized-error-handling.md` |
+| Error responses | Shared error envelope, definition-based typed errors containing code/kind/message, status-based safe mapper, request ID propagation, structured logging, panic recovery, and handler migration away from raw error responses | `internal/platform/httpx/response.go`, `internal/platform/httpx/error_test.go`, `internal/platform/faults/error.go`, `internal/constants/error/definitions.go`, `internal/platform/middleware/request_id.go`, `internal/platform/middleware/logging.go`, `internal/platform/middleware/recovery.go`, `docs/ADR/0005-centralized-error-handling.md` |
 
 ## OWASP API Security Top 10 (2023) mapping
 
@@ -79,7 +79,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Use request DTOs with explicit allow-lists. Never bind request bodies directly into persistence models. Server-owned fields must be assigned by the service layer.
 
-**Current status:** Auth and seller product DTOs are explicit allow-lists, including partial-update null rejection. Future cart, checkout, payment, and order handlers must preserve this rule.
+**Current status:** Auth, seller product, and cart DTOs are explicit allow-lists, including partial-update null rejection. Future checkout, payment, and order handlers must preserve this rule.
 
 ### API4:2023 Unrestricted Resource Consumption
 
@@ -196,6 +196,13 @@ The repository currently has implemented authentication, database-backed session
 - **Mitigation:** Apply the shared rate limiter, validate and cap `per_page`, reject invalid cursor/filter combinations, restrict sorting to an allow-list, use parameterized queries, add `pg_trgm` GIN indexes for name and description search, and enforce `active` plus `deleted_at IS NULL` visibility predicates in the repository query.
 - **Residual risk:** The catalog runtime implementation and focused regression coverage are present. Index selectivity and search cost still need measurement against representative production-sized data.
 
+### 8. Purchase a product owned by the authenticated buyer
+
+- **Attack:** A seller uses the buyer capability of the same account to add their own product to a cart and later attempts to create an artificial sale.
+- **Impact:** Manipulated sales, revenue, promotion, or review metrics.
+- **Mitigation:** Cart item mutation compares the locked product `seller_id` with the authenticated actor ID and rejects a match with `commerce.self_purchase_not_allowed`. Checkout must repeat the same validation inside its transaction rather than trusting cart state.
+- **Residual risk:** Cart-time prevention is implemented. Checkout-time defense-in-depth remains pending until the checkout slice exists.
+
 ## Logging and privacy rules
 
 - Never log passwords, access tokens, refresh tokens, JWT signing secrets, webhook secrets, or payment-card data.
@@ -206,12 +213,12 @@ The repository currently has implemented authentication, database-backed session
 
 ## What is not safe yet
 
-1. Cart, checkout, order, payment, stock-ledger, audit, idempotency, webhook verification, and critical transaction tests are not implemented yet.
+1. Cart lifecycle, cart ownership, current-stock validation, self-purchase prevention, and cart HTTP/integration/runtime coverage are implemented. Checkout, order, payment, stock-ledger, audit, idempotency, webhook verification, and critical transaction tests are not implemented yet.
 2. `user_login_security_states` is wired into login failure tracking, five-attempt lockout, reset-after-success behavior, and PostgreSQL/integration/runtime coverage.
 3. JWT key rotation is implemented through `APP_JWT_SECRET` plus a bounded `APP_JWT_PREVIOUS_SECRETS` verification list; secret-manager integration and automated rotation orchestration are not implemented.
 4. Production Compose still requires a manual hardening pass in `deployments/compose/docker-compose.yml`: explicit deployment credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
 5. The current rate limiter uses global anonymous-IP and authenticated-user policies; additional business-flow policies remain to be designed for checkout, payment, and webhook endpoints.
 6. Registration/login still need a dedicated anti-enumeration and timing-hardening review; lockout and generic invalid-credentials responses are implemented.
-7. Error response foundations and marketplace catalog error mapping exist; stable domain codes and field-level validation details need to expand with the future transaction handlers.
+7. Error response foundations, definition-based error metadata, marketplace catalog errors, and cart-specific errors exist; stable domain codes and field-level validation details need to expand with the future transaction handlers.
 
 These are intentionally documented as residual risks rather than hidden behind claims that the assessment scope is already complete.

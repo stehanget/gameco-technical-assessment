@@ -1,6 +1,6 @@
 # ADR-0005: Centralized HTTP Error Handling
 
-- **Status:** Accepted; marketplace domain-error mapping pending
+- **Status:** Accepted; transaction-domain error expansion pending
 - **Date:** 2026-10-21
 - **Scope:** HTTP transport error responses and request-correlated logging
 
@@ -50,7 +50,7 @@ The mapper must preserve the public HTTP contract for known errors and collapse 
 | dependency unavailable or timeout | 503 | safe availability message |
 | unknown or internal error | 500 | generic internal-server-error message |
 
-The exact domain error registry may grow per module, but the transport mapping and fallback rules must remain centralized and consistent.
+Each public application error is defined once as a `faults.Definition` in `internal/constants/error/definitions.go`. A definition owns the stable public code, `faults.Kind`, and safe default message. Modules create errors with `faults.New(definition, cause)`. The HTTP layer maps only generic fault kinds to statuses and renders the metadata carried by the typed error; it does not maintain a domain-code or message switch.
 
 ### Response contract
 
@@ -66,7 +66,7 @@ All HTTP errors use the shared error envelope:
 
 Future machine-readable error codes or field-level validation details must be added to the shared response type rather than introduced as module-specific top-level shapes.
 
-Stable public error codes and default client-facing messages are maintained together in `internal/constants/error`. Until i18n is implemented, the transport mapper consumes the static message constants. When i18n is introduced, the message source can be replaced without changing error codes or handlers.
+Stable public error codes, fault kinds, and default client-facing messages are maintained together in `internal/constants/error/definitions.go`. When i18n is introduced, the message source can be replaced without changing error codes, fault kinds, or handlers.
 
 ### Security and logging rules
 
@@ -104,16 +104,16 @@ Domain and repository layers return typed/sentinel errors and do not depend on G
 
 Implemented foundation:
 
-- `internal/platform/httpx/response.go` provides shared success/error envelopes and the single `HandleError` entry point.
+- `internal/platform/httpx/response.go` provides shared success/error envelopes, generic fault-kind status mapping, and the single `HandleError` entry point.
 - `internal/platform/middleware/request_id.go` generates or propagates request IDs.
 - `internal/platform/middleware/logging.go` emits structured request logs with request IDs, route templates, numeric duration, status-based levels, and typed error metadata.
 - `internal/platform/middleware/recovery.go` converts panics into a safe 500 response through `HandleError`.
 
 Remaining implementation work:
 
-- extend typed domain-error classification to marketplace modules;
-- add marketplace-specific error codes and field-level validation details where the frontend contract requires them;
-- add handler/router tests proving that unknown errors never leak internal details and known domain errors retain their intended status.
+- expand `faults.Definition` entries for checkout, order, payment, idempotency, and webhook flows;
+- add marketplace-specific field-level validation details where the frontend contract requires them;
+- add handler/router tests for each future transaction-domain error while preserving the single `httpx.HandleError` entry point.
 
 ## Evidence and requirements
 
@@ -124,8 +124,7 @@ Remaining implementation work:
 - `internal/platform/middleware/logging.go`
 - `internal/platform/middleware/recovery.go`
 - `internal/platform/faults/error.go`
-- `internal/constants/error/codes.go`
-- `internal/constants/error/messages.go`
+- `internal/constants/error/definitions.go`
 - `internal/modules/auth/handler.go`
 - `internal/modules/auth/service.go`
 - `internal/modules/example/handler.go`
