@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"gameco-technical-assessment/internal/config"
 	errorconst "gameco-technical-assessment/internal/constants/error"
@@ -30,6 +31,12 @@ type SessionMetadata struct {
 	UserAgent string
 	IPAddress string
 }
+
+const (
+	maxLoginFailures  = 5
+	loginLockDuration = 15 * time.Minute
+	loginLockReason   = "failed_attempts"
+)
 
 func NewService(repository *Repository, redisClient *redis.Client, jwtManager *platformauth.JWTManager, cfg config.AppConfig) *Service {
 	return NewServiceWithClock(repository, redisClient, jwtManager, cfg, platformclock.System{})
@@ -83,8 +90,23 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 		}
 		return TokenResponse{}, err
 	}
+
+	securityState, stateErr := s.repository.FindLoginSecurityState(ctx, user.ID)
+	if stateErr != nil && !errors.Is(stateErr, gorm.ErrRecordNotFound) {
+		return TokenResponse{}, stateErr
+	}
+	if securityState.LockedUntil != nil && s.clock.Now().Before(*securityState.LockedUntil) {
+		return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, nil)
+	}
+
 	if err := platformauth.ComparePassword(user.PasswordHash, input.Password); err != nil {
+		if recordErr := s.repository.RecordLoginFailure(ctx, user.ID, s.clock.Now(), s.clock.Now().Add(loginLockDuration)); recordErr != nil {
+			return TokenResponse{}, recordErr
+		}
 		return TokenResponse{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidCredentials, err)
+	}
+	if err := s.repository.ResetLoginSecurityState(ctx, user.ID); err != nil {
+		return TokenResponse{}, err
 	}
 	return s.issueTokenPair(ctx, user, metadata)
 }

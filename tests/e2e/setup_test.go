@@ -25,6 +25,11 @@ import (
 )
 
 func newE2ERouter(t *testing.T) *gin.Engine {
+	router, _ := newE2ERouterWithDB(t)
+	return router
+}
+
+func newE2ERouterWithDB(t *testing.T) (*gin.Engine, *gorm.DB) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -49,6 +54,7 @@ func newE2ERouter(t *testing.T) *gin.Engine {
 		&authmodule.RolePermission{},
 		&authmodule.UserRole{},
 		&authmodule.AuthSession{},
+		&authmodule.LoginSecurityState{},
 		&catalogmodule.Category{},
 		&catalogmodule.Product{},
 	); err != nil {
@@ -80,5 +86,5 @@ func newE2ERouter(t *testing.T) *gin.Engine {
 		Redis:     redisClient,
 		JWTSigner: platformauth.NewJWTManager("test-secret"),
 	}
-	return app.NewRouter(container)
+	return app.NewRouter(container), db
 }

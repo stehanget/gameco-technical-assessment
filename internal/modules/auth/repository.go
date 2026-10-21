@@ -70,6 +70,49 @@ func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, err
 	return false, err
 }
 
+func (r *Repository) ResetLoginSecurityState(ctx context.Context, userID uint) error {
+	return r.db.WithContext(ctx).Model(&LoginSecurityState{}).Where("user_id = ?", userID).Updates(map[string]any{
+		"failed_attempt_count":   0,
+		"first_failed_at":        nil,
+		"last_failed_at":         nil,
+		"locked_until":           nil,
+		"requires_manual_unlock": false,
+		"last_lock_reason":       nil,
+	}).Error
+}
+
+func (r *Repository) FindLoginSecurityState(ctx context.Context, userID uint) (LoginSecurityState, error) {
+	var state LoginSecurityState
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&state).Error
+	return state, err
+}
+
+func (r *Repository) RecordLoginFailure(ctx context.Context, userID uint, now time.Time, lockUntil time.Time) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var state LoginSecurityState
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&state).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return tx.Create(&LoginSecurityState{
+				UserID:             userID,
+				FailedAttemptCount: 1,
+				FirstFailedAt:      &now,
+				LastFailedAt:       &now,
+			}).Error
+		}
+		if err != nil {
+			return err
+		}
+
+		state.FailedAttemptCount++
+		state.LastFailedAt = &now
+		if state.FailedAttemptCount >= maxLoginFailures {
+			state.LockedUntil = &lockUntil
+			state.LastLockReason = loginLockReason
+		}
+		return tx.Save(&state).Error
+	})
+}
+
 func (r *Repository) Access(ctx context.Context, userID uint) (Access, error) {
 	type accessRow struct {
 		RoleCode       string

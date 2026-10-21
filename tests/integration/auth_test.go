@@ -33,18 +33,76 @@ func TestAuthHTTPAgainstPostgres(t *testing.T) {
 		t.Fatalf("register: expected access and refresh tokens, got %+v", token)
 	}
 
-	request, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/auth/me", nil)
+	meRequest, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/auth/me", nil)
 	if err != nil {
 		t.Fatalf("create me request: %v", err)
 	}
-	request.Header.Set("Authorization", "Bearer "+token.Data.AccessToken)
-	response, err := http.DefaultClient.Do(request)
+	meRequest.Header.Set("Authorization", "Bearer "+token.Data.AccessToken)
+	response, err := http.DefaultClient.Do(meRequest)
 	if err != nil {
 		t.Fatalf("request me: %v", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("me: expected 200, got %d", response.StatusCode)
+	}
+
+	refreshed := request(t, http.MethodPost, server.URL+"/api/v1/auth/refresh", "", map[string]string{
+		"refresh_token": token.Data.RefreshToken,
+	})
+	if refreshed.StatusCode != http.StatusOK {
+		t.Fatalf("refresh: expected 200, got %d: %s", refreshed.StatusCode, refreshed.Body)
+	}
+	var refreshedToken tokenResponse
+	decode(t, refreshed.Body, &refreshedToken)
+	if refreshedToken.Data.AccessToken == "" || refreshedToken.Data.RefreshToken == "" {
+		t.Fatal("refresh: expected rotated token pair")
+	}
+
+	logout := request(t, http.MethodPost, server.URL+"/api/v1/auth/logout", "", map[string]string{
+		"refresh_token": refreshedToken.Data.RefreshToken,
+	})
+	if logout.StatusCode != http.StatusOK {
+		t.Fatalf("logout: expected 200, got %d: %s", logout.StatusCode, logout.Body)
+	}
+
+	revoked := request(t, http.MethodPost, server.URL+"/api/v1/auth/refresh", "", map[string]string{
+		"refresh_token": refreshedToken.Data.RefreshToken,
+	})
+	if revoked.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("revoked refresh: expected 401, got %d: %s", revoked.StatusCode, revoked.Body)
+	}
+}
+
+func TestLoginLocksAgainstPostgres(t *testing.T) {
+	cfg := testsupport.IntegrationConfig(t)
+	server := testsupport.NewAPI(t, cfg)
+	email := fmt.Sprintf("lockout-%d@example.com", time.Now().UnixNano())
+
+	register := postJSON(t, server.URL+"/api/v1/auth/register", map[string]string{
+		"email":    email,
+		"password": "correct-horse-battery-staple",
+	})
+	if register.StatusCode != http.StatusCreated {
+		t.Fatalf("register: expected 201, got %d: %s", register.StatusCode, register.Body)
+	}
+
+	for attempt := 1; attempt <= 5; attempt++ {
+		login := postJSON(t, server.URL+"/api/v1/auth/login", map[string]string{
+			"email":    email,
+			"password": "wrong-password",
+		})
+		if login.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("failed login %d: expected 401, got %d: %s", attempt, login.StatusCode, login.Body)
+		}
+	}
+
+	lockedLogin := postJSON(t, server.URL+"/api/v1/auth/login", map[string]string{
+		"email":    email,
+		"password": "correct-horse-battery-staple",
+	})
+	if lockedLogin.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("locked login: expected 401, got %d: %s", lockedLogin.StatusCode, lockedLogin.Body)
 	}
 }
 

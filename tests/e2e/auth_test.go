@@ -112,6 +112,26 @@ func TestAuthRegisterLoginThenMe(t *testing.T) {
 	if reusedRefreshResponse.Code != http.StatusUnauthorized {
 		t.Fatalf("reused refresh: expected status 401, got %d: %s", reusedRefreshResponse.Code, reusedRefreshResponse.Body.String())
 	}
+
+	logoutBody, err := json.Marshal(map[string]string{"refresh_token": refreshPayload.Data.RefreshToken})
+	if err != nil {
+		t.Fatalf("encode logout request: %v", err)
+	}
+	logoutRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", bytes.NewReader(logoutBody))
+	logoutRequest.Header.Set("Content-Type", "application/json")
+	logoutResponse := httptest.NewRecorder()
+	router.ServeHTTP(logoutResponse, logoutRequest)
+	if logoutResponse.Code != http.StatusOK {
+		t.Fatalf("logout: expected status 200, got %d: %s", logoutResponse.Code, logoutResponse.Body.String())
+	}
+
+	revokedRefreshRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", bytes.NewReader(logoutBody))
+	revokedRefreshRequest.Header.Set("Content-Type", "application/json")
+	revokedRefreshResponse := httptest.NewRecorder()
+	router.ServeHTTP(revokedRefreshResponse, revokedRefreshRequest)
+	if revokedRefreshResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked refresh: expected status 401, got %d, got body %s", revokedRefreshResponse.Code, revokedRefreshResponse.Body.String())
+	}
 }
 
 type authTokenEnvelope struct {

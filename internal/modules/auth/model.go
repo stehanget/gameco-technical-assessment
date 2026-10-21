@@ -72,6 +72,20 @@ type AuthSession struct {
 
 func (AuthSession) TableName() string { return "auth_sessions" }
 
+type LoginSecurityState struct {
+	UserID               uint       `gorm:"primaryKey" json:"user_id"`
+	FailedAttemptCount   int        `gorm:"not null;default:0" json:"failed_attempt_count"`
+	FirstFailedAt        *time.Time `json:"first_failed_at,omitempty"`
+	LastFailedAt         *time.Time `json:"last_failed_at,omitempty"`
+	LockedUntil          *time.Time `json:"locked_until,omitempty"`
+	RequiresManualUnlock bool       `gorm:"not null;default:false" json:"requires_manual_unlock"`
+	LastLockReason       string     `gorm:"size:64" json:"last_lock_reason,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
+}
+
+func (LoginSecurityState) TableName() string { return "user_login_security_states" }
+
 type Access struct {
 	UserID      uint
 	Roles       []string

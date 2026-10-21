@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -18,6 +19,9 @@ func NewAPI(t *testing.T, cfg config.Config) *httptest.Server {
 	db := OpenPostgres(t, cfg)
 	AssertMigrationsApplied(t, db)
 	redisClient := OpenRedis(t, cfg)
+	if err := redisClient.FlushDB(context.Background()).Err(); err != nil {
+		t.Fatalf("flush Redis test database: %v", err)
+	}
 	clock := platformclock.System{}
 	container := &app.Container{
 		Config:    cfg,

@@ -70,6 +70,38 @@ func TestSellerProductRejectsUnauthenticatedRequest(t *testing.T) {
 	}
 }
 
+func TestSellerProductRejectsBuyerOnlyActor(t *testing.T) {
+	router, db := newE2ERouterWithDB(t)
+	if err := db.Exec(`DELETE FROM user_roles WHERE user_id = (SELECT id FROM users WHERE email = ?) AND role_id = (SELECT id FROM roles WHERE code = ?)`, "user@mail.com", "seller").Error; err != nil {
+		t.Fatalf("remove seller role: %v", err)
+	}
+	accessToken := e2ELogin(t, router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/seller/products", nil)
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("buyer-only seller products: expected status 403, got %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestSellerProductRejectsMissingPermission(t *testing.T) {
+	router, db := newE2ERouterWithDB(t)
+	if err := db.Exec(`DELETE FROM role_permissions WHERE permission_id = (SELECT id FROM permissions WHERE code = ?)`, "product.read").Error; err != nil {
+		t.Fatalf("remove seller permission: %v", err)
+	}
+	accessToken := e2ELogin(t, router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/seller/products", nil)
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("seller without permission: expected status 403, got %d: %s", response.Code, response.Body.String())
+	}
+}
+
 func TestSellerProductRejectsInvalidCreatePayload(t *testing.T) {
 	router := newE2ERouter(t)
 	accessToken := e2ELogin(t, router)

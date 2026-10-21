@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, and an auth E2E flow. The marketplace tables exist, while marketplace runtime endpoints—including the public catalog read API and transaction endpoints—are still implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, and seller product management. Cart, checkout, order, payment, stock-ledger, and audit runtime flows remain implementation scope; they must not be treated as implemented merely because they appear in the DBML or ADRs.
 
 ## Assets
 
@@ -63,7 +63,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Every marketplace read and mutation must scope the query by the authenticated actor and resource ownership, not by identifier alone. Seller product writes must include seller ownership in the database query. Buyer order reads must include buyer ownership. Public catalog reads must exclude soft-deleted products.
 
-**Current status:** The authorization middleware exists, but marketplace object-level handlers are not implemented yet. This remains a release blocker for marketplace endpoints.
+**Current status:** Public catalog reads and seller product handlers are implemented with seller-scoped queries and route-level authentication, role, permission, and ownership checks. Buyer order ownership and transaction authorization remain pending with the future order/checkout flows.
 
 ### API2:2023 Broken Authentication
 
@@ -71,7 +71,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** bcrypt password hashing, strict `HS256` verification, 15-minute access tokens, database-backed active-session lookup, short-lived session caching with revoke markers, atomic refresh rotation, refresh hash persistence, reuse detection, 24-hour refresh tokens, and server-side logout.
 
-**Gaps/residual risk:** Login failure lockout state (`user_login_security_states`) is documented in the agreed schema but not yet migrated or wired into the current login service. MFA and device/session management are not implemented. JWT rotation supports a current secret plus a bounded previous-secret list; secure secret-manager storage and rotation orchestration remain deployment responsibilities.
+**Gaps/residual risk:** Login failure lockout state (`user_login_security_states`) is wired into the login service with a five-attempt, bounded lockout and reset-after-success behavior. MFA, manual unlock/audit workflow, and device/session management are not implemented. JWT rotation supports a current secret plus a bounded previous-secret list; secure secret-manager storage and rotation orchestration remain deployment responsibilities.
 
 ### API3:2023 Broken Object Property Level Authorization
 
@@ -79,7 +79,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Use request DTOs with explicit allow-lists. Never bind request bodies directly into persistence models. Server-owned fields must be assigned by the service layer.
 
-**Current status:** Auth DTOs are explicit. Marketplace DTOs are not implemented yet; product, checkout, payment, and order handlers must preserve this rule.
+**Current status:** Auth and seller product DTOs are explicit allow-lists, including partial-update null rejection. Future cart, checkout, payment, and order handlers must preserve this rule.
 
 ### API4:2023 Unrestricted Resource Consumption
 
@@ -87,7 +87,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** Redis-backed shared rate limiting, request body limits, bounded query filters, cursor page-size limits, indexed catalog search, timeout-aware external calls, and endpoint-specific policies.
 
-**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. A request selects one bucket; session-specific limiting is intentionally not used. The accepted catalog design requires bounded `per_page`, opaque cursor traversal, and PostgreSQL trigram indexes for name/description search; the catalog handlers and search migration are not implemented yet. Body-size limits, checkout limits, and payment-provider circuit breaking are still required for the marketplace scope.
+**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. Public catalog query bounds, opaque cursors, allow-listed sorting, and PostgreSQL trigram search indexes are implemented. Body-size limits, checkout limits, and payment-provider circuit breaking are still required for the future transaction scope.
 
 ### Public catalog query safety
 
@@ -95,7 +95,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Keep the public query surface read-only; expose only allow-listed `sort_by` and `sort_order` values; use parameterized filters; cap `per_page`; use opaque cursor pagination with a deterministic tie-breaker; search only active, non-deleted products; and add PostgreSQL `pg_trgm` GIN indexes for the name and description search path. Do not expose internal IDs in cursors or responses as a public contract.
 
-**Current status:** The decisions are recorded in `docs/ADR/0006-public-catalog-read-api.md`. Runtime query validation, cursor verification, trigram migration, catalog handlers, and focused abuse/regression tests remain pending.
+**Current status:** The catalog repository and handlers enforce active/non-deleted visibility, parameterized filters, allow-listed sorting, bounded page size, opaque cursor validation, and PostgreSQL trigram indexes. E2E, integration, and runtime coverage exists for the main list/detail paths; representative load testing remains pending.
 
 ### API5:2023 Broken Function Level Authorization
 
@@ -103,7 +103,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation:** Permission catalog constants and `RequirePermissions` middleware with default deny.
 
-**Current status:** Auth permission enforcement is implemented. Seller/admin marketplace permissions and route guards must be added with the corresponding handlers.
+**Current status:** Auth permission enforcement and seller product route guards are implemented. Admin operations and buyer/order permissions remain pending with the future administrative and transaction surfaces.
 
 ### API6:2023 Unrestricted Access to Sensitive Business Flows
 
@@ -127,7 +127,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** Explicit CORS allowlist, credentials disabled, environment-based configuration, recovery middleware, generated Swagger, and `.env.example` without real secrets.
 
-**Residual risk:** Swagger is exposed by the current router and must be protected or disabled according to the deployment environment if the API is publicly deployed.
+**Residual risk:** Swagger is disabled in `production`. Production Compose still requires a deliberate manual hardening pass before deployment: explicit credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
 
 ### API9:2023 Improper Inventory Management
 
@@ -152,7 +152,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Seller A submits Seller B's product public ID to the update endpoint.
 - **Impact:** Unauthorized price, stock, or catalog mutation.
 - **Mitigation:** Update query must constrain both `product.public_id` and `product.seller_id = authenticated_user_id`; protected fields must come from explicit DTOs.
-- **Residual risk:** Not mitigated until marketplace handlers and an authorization-cross-user test exist.
+- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Equivalent buyer/order ownership coverage remains pending until order endpoints exist.
 
 ### 2. Two checkout requests consume the last stock
 
@@ -180,7 +180,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Send repeated login attempts from distributed IP addresses.
 - **Impact:** Account compromise or user lockout denial of service.
 - **Mitigation:** Shared IP rate limiting, progressive per-user login security state, generic invalid-credential responses, and bounded lockout behavior.
-- **Residual risk:** The current repository has Redis rate limiting, but the per-user security-state migration/service is still pending. Permanent lockout must require a deliberate manual-unlock flow and must not be attacker-triggerable indefinitely.
+- **Residual risk:** Redis rate limiting and per-user security state are implemented, but the current lockout is time-bounded rather than manually unlockable. A future manual-unlock/audit flow must prevent attackers from indefinitely locking a victim account.
 
 ### 6. Abuse a client-provided image URL
 
@@ -194,7 +194,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Send repeated broad substring searches, malformed cursors, or large page-size values to force expensive scans or repeatedly traverse the catalog.
 - **Impact:** Database resource exhaustion, elevated latency, or accidental exposure of inactive/soft-deleted products.
 - **Mitigation:** Apply the shared rate limiter, validate and cap `per_page`, reject invalid cursor/filter combinations, restrict sorting to an allow-list, use parameterized queries, add `pg_trgm` GIN indexes for name and description search, and enforce `active` plus `deleted_at IS NULL` visibility predicates in the repository query.
-- **Residual risk:** The catalog runtime implementation and its query/load tests are not yet present; index selectivity and search cost must be measured after representative data is available.
+- **Residual risk:** The catalog runtime implementation and focused regression coverage are present. Index selectivity and search cost still need measurement against representative production-sized data.
 
 ## Logging and privacy rules
 
@@ -206,12 +206,12 @@ The repository currently has implemented authentication, database-backed session
 
 ## What is not safe yet
 
-1. Marketplace endpoints, including the public catalog read API, object-level authorization, checkout locking, idempotency, webhook verification, and critical transaction tests are not implemented yet.
-2. `user_login_security_states` is agreed in DBML but not yet present in a migration or login flow.
+1. Cart, checkout, order, payment, stock-ledger, audit, idempotency, webhook verification, and critical transaction tests are not implemented yet.
+2. `user_login_security_states` is wired into login failure tracking, five-attempt lockout, reset-after-success behavior, and PostgreSQL/integration/runtime coverage.
 3. JWT key rotation is implemented through `APP_JWT_SECRET` plus a bounded `APP_JWT_PREVIOUS_SECRETS` verification list; secret-manager integration and automated rotation orchestration are not implemented.
-4. Swagger is available from the application router and needs an explicit production exposure decision.
-5. The current rate limiter uses one global middleware with anonymous IP and authenticated-user policies; trusted proxy configuration and additional business-flow policies for future marketplace endpoints remain to be designed.
-6. The current auth registration/login behavior still needs a dedicated anti-enumeration and timing-hardening review.
-7. Error response foundations, status-based safe mapping, and typed auth errors exist. Marketplace domain-error classification, stable marketplace codes, and field-level validation details remain to be expanded as marketplace handlers are implemented.
+4. Production Compose still requires a manual hardening pass in `deployments/compose/docker-compose.yml`: explicit deployment credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
+5. The current rate limiter uses global anonymous-IP and authenticated-user policies; additional business-flow policies remain to be designed for checkout, payment, and webhook endpoints.
+6. Registration/login still need a dedicated anti-enumeration and timing-hardening review; lockout and generic invalid-credentials responses are implemented.
+7. Error response foundations and marketplace catalog error mapping exist; stable domain codes and field-level validation details need to expand with the future transaction handlers.
 
 These are intentionally documented as residual risks rather than hidden behind claims that the assessment scope is already complete.
