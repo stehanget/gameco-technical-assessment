@@ -115,8 +115,20 @@ The shared `commerce.self_purchase_not_allowed` definition is reused when checko
 
 - A transaction may wait while another request owns the same idempotency key or product row locks.
 - Failed checkout because of one unavailable item rejects the whole cart rather than partially creating an order.
-- Idempotency records require retention/cleanup policy in a later operational slice.
-- Payment-provider integration and webhook replay protection remain outside this initial checkout implementation.
+- Idempotency records require a configured retention window and periodic cleanup; completed records are pruned after the replay window, while pending reservations are preserved.
+- The replay guarantee lasts only while the completed idempotency record is retained. Reusing a pruned key starts a new logical operation and is the client's responsibility to avoid.
+
+## Retention policy
+
+`checkout_idempotency_keys` uses a separate policy from payment webhook inbox events:
+
+- `APP_CHECKOUT_IDEMPOTENCY_RETENTION` defaults to `720h` (30 days).
+- `APP_CHECKOUT_IDEMPOTENCY_CLEANUP_INTERVAL` defaults to `1h`.
+- Cleanup deletes only rows with `order_id IS NOT NULL` and `updated_at` older than the cutoff.
+- Pending rows with `order_id IS NULL` are not deleted by retention cleanup because they need a separate recovery policy.
+
+- The maintenance worker owns this cleanup under `internal/workers/maintenance`; the application layer only composes and starts it.
+- Outbound payment-provider integration remains outside the initial checkout implementation; inbound webhook behavior is specified in ADR-0011.
 
 ## Required verification
 
@@ -133,14 +145,14 @@ The shared `commerce.self_purchase_not_allowed` definition is reused when checko
 - [x] Buyer order detail reads are scoped to the authenticated buyer through `GET /api/v1/orders/{order_public_id}`.
 - [x] PostgreSQL integration and real-binary runtime tests prove the sequential transaction behavior.
 
-## Explicitly deferred
+## Explicitly deferred from this checkout ADR
 
-- external payment-provider calls;
-- HMAC-signed payment webhooks and provider event replay handling;
-- payment retry/expiry workers;
-- order cancellation and stock restoration;
-- idempotency-record retention and cleanup worker;
+- outbound payment-provider calls;
+- payment expiry scheduler and retry worker;
+- refunds and partial refunds;
 - transactional outbox notifications.
+
+Inbound payment webhook verification, payment state transitions, expiry-triggered cancellation/stock restoration, and webhook-event retention are specified and verified separately in ADR-0011.
 
 ## References
 

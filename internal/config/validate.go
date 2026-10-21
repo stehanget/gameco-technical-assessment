@@ -14,6 +14,7 @@ func (c Config) Validate() error {
 	if c.App.JWTSecret == "" || c.App.JWTSecret == "change-me" {
 		return fmt.Errorf("APP_JWT_SECRET must be explicitly configured")
 	}
+
 	if c.App.Env == "production" && c.App.PaymentWebhookSecret == "" {
 		return fmt.Errorf("APP_PAYMENT_WEBHOOK_SECRET must be explicitly configured")
 	}
@@ -24,6 +25,14 @@ func (c Config) Validate() error {
 
 	if c.App.RefreshTokenTTL <= 0 {
 		return fmt.Errorf("APP_REFRESH_TOKEN_TTL must be greater than zero")
+	}
+
+	if c.App.PaymentWebhookEventRetention <= 0 || c.App.PaymentWebhookCleanupInterval <= 0 {
+		return fmt.Errorf("payment webhook retention and cleanup interval must be greater than zero")
+	}
+
+	if c.App.CheckoutIdempotencyRetention <= 0 || c.App.CheckoutIdempotencyCleanupInterval <= 0 {
+		return fmt.Errorf("checkout idempotency retention and cleanup interval must be greater than zero")
 	}
 
 	if c.Postgres.Host == "" || c.Postgres.Port == "" || c.Postgres.User == "" || c.Postgres.Database == "" {
@@ -37,6 +46,7 @@ func (c Config) Validate() error {
 	if c.RateLimit.Anonymous.Limit <= 0 || c.RateLimit.Anonymous.Window <= 0 {
 		return fmt.Errorf("anonymous rate limit limit and window must be greater than zero")
 	}
+
 	if c.RateLimit.Authenticated.Limit <= 0 || c.RateLimit.Authenticated.Window <= 0 {
 		return fmt.Errorf("authenticated rate limit limit and window must be greater than zero")
 	}

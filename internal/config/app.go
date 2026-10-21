@@ -9,17 +9,21 @@ import (
 const maxPreviousJWTSecrets = 3
 
 type AppConfig struct {
-	Name                 string
-	Env                  string
-	Port                 string
-	ReadTimeout          time.Duration
-	WriteTimeout         time.Duration
-	ShutdownTimeout      time.Duration
-	JWTSecret            string
-	JWTPreviousSecrets   []string
-	PaymentWebhookSecret string
-	AccessTokenTTL       time.Duration
-	RefreshTokenTTL      time.Duration
+	Name                               string
+	Env                                string
+	Port                               string
+	ReadTimeout                        time.Duration
+	WriteTimeout                       time.Duration
+	ShutdownTimeout                    time.Duration
+	JWTSecret                          string
+	JWTPreviousSecrets                 []string
+	PaymentWebhookSecret               string
+	PaymentWebhookEventRetention       time.Duration
+	PaymentWebhookCleanupInterval      time.Duration
+	CheckoutIdempotencyRetention       time.Duration
+	CheckoutIdempotencyCleanupInterval time.Duration
+	AccessTokenTTL                     time.Duration
+	RefreshTokenTTL                    time.Duration
 }
 
 func loadAppConfig() (AppConfig, error) {
@@ -48,23 +52,45 @@ func loadAppConfig() (AppConfig, error) {
 		return AppConfig{}, err
 	}
 
+	webhookRetention, err := getEnvDuration("APP_PAYMENT_WEBHOOK_EVENT_RETENTION", 7*24*time.Hour)
+	if err != nil {
+		return AppConfig{}, err
+	}
+	webhookCleanupInterval, err := getEnvDuration("APP_PAYMENT_WEBHOOK_CLEANUP_INTERVAL", time.Hour)
+	if err != nil {
+		return AppConfig{}, err
+	}
+
+	checkoutIdempotencyRetention, err := getEnvDuration("APP_CHECKOUT_IDEMPOTENCY_RETENTION", 30*24*time.Hour)
+	if err != nil {
+		return AppConfig{}, err
+	}
+	checkoutIdempotencyInterval, err := getEnvDuration("APP_CHECKOUT_IDEMPOTENCY_CLEANUP_INTERVAL", time.Hour)
+	if err != nil {
+		return AppConfig{}, err
+	}
+
 	jwtSecret, previousSecrets, err := loadJWTSecrets()
 	if err != nil {
 		return AppConfig{}, err
 	}
 
 	return AppConfig{
-		Name:                 getEnv("APP_NAME", "gameco-technical-assessment"),
-		Env:                  getEnv("APP_ENV", "development"),
-		Port:                 getEnv("APP_PORT", "8080"),
-		ReadTimeout:          readTimeout,
-		WriteTimeout:         writeTimeout,
-		ShutdownTimeout:      shutdownTimeout,
-		JWTSecret:            jwtSecret,
-		JWTPreviousSecrets:   previousSecrets,
-		PaymentWebhookSecret: getEnv("APP_PAYMENT_WEBHOOK_SECRET", ""),
-		AccessTokenTTL:       accessTokenTTL,
-		RefreshTokenTTL:      refreshTokenTTL,
+		Name:                               getEnv("APP_NAME", "gameco-technical-assessment"),
+		Env:                                getEnv("APP_ENV", "development"),
+		Port:                               getEnv("APP_PORT", "8080"),
+		ReadTimeout:                        readTimeout,
+		WriteTimeout:                       writeTimeout,
+		ShutdownTimeout:                    shutdownTimeout,
+		JWTSecret:                          jwtSecret,
+		JWTPreviousSecrets:                 previousSecrets,
+		PaymentWebhookSecret:               getEnv("APP_PAYMENT_WEBHOOK_SECRET", ""),
+		PaymentWebhookEventRetention:       webhookRetention,
+		PaymentWebhookCleanupInterval:      webhookCleanupInterval,
+		CheckoutIdempotencyRetention:       checkoutIdempotencyRetention,
+		CheckoutIdempotencyCleanupInterval: checkoutIdempotencyInterval,
+		AccessTokenTTL:                     accessTokenTTL,
+		RefreshTokenTTL:                    refreshTokenTTL,
 	}, nil
 }
 

@@ -4,6 +4,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	checkoutmodule "gameco-technical-assessment/internal/modules/checkout"
 	testsupport "gameco-technical-assessment/tests/support"
 )
 
@@ -91,6 +93,71 @@ func TestPaymentWebhookRollbackAndPayloadConflictAgainstPostgres(t *testing.T) {
 	}
 	if got := countRows(t, db, "payment_webhook_events"); got != eventsBefore+1 {
 		t.Fatalf("payload conflict created another event: before=%d after=%d", eventsBefore, got)
+	}
+}
+
+func TestPaymentExpiredRestoresStockAgainstPostgres(t *testing.T) {
+	cfg := testsupport.IntegrationConfig(t)
+	db := testsupport.OpenPostgres(t, cfg)
+	server := testsupport.NewAPI(t, cfg)
+	productID := integrationProductID(t, server.URL)
+	initialStock := productStock(t, db, productID)
+	buyer := registerBuyer(t, server.URL, "webhook-expired")
+	addToCart(t, server.URL, buyer, productID)
+
+	checkout := checkoutRequest(t, server.URL+"/api/v1/checkout", buyer, "webhook-expired-checkout")
+	if checkout.StatusCode != http.StatusCreated {
+		t.Fatalf("checkout: expected 201, got %d: %s", checkout.StatusCode, checkout.Body)
+	}
+	var order checkoutEnvelope
+	decode(t, checkout.Body, &order)
+	if got := productStock(t, db, productID); got != initialStock-1 {
+		t.Fatalf("stock after checkout: expected %d, got %d", initialStock-1, got)
+	}
+
+	payload := paymentWebhookBody(t, "provider-expired-1", "payment.expired", order.Data.PaymentReference, order.Data.TotalAmount, time.Now().UTC().Truncate(time.Second))
+	if response := sendPaymentWebhook(t, server.URL, cfg.App.PaymentWebhookSecret, payload); response.StatusCode != http.StatusNoContent {
+		t.Fatalf("expired webhook: expected 204, got %d: %s", response.StatusCode, response.Body)
+	}
+	if got := productStock(t, db, productID); got != initialStock {
+		t.Fatalf("stock was not restored: expected %d, got %d", initialStock, got)
+	}
+	var paymentStatus, orderStatus string
+	db.Raw("SELECT status FROM payments WHERE payment_reference = ?", order.Data.PaymentReference).Scan(&paymentStatus)
+	db.Raw("SELECT status FROM orders WHERE payment_reference = ?", order.Data.PaymentReference).Scan(&orderStatus)
+	if paymentStatus != "expired" || orderStatus != "cancelled" {
+		t.Fatalf("unexpected expired states: payment=%s order=%s", paymentStatus, orderStatus)
+	}
+
+	movementsBefore := countRows(t, db, "stock_movements")
+	if response := sendPaymentWebhook(t, server.URL, cfg.App.PaymentWebhookSecret, payload); response.StatusCode != http.StatusNoContent {
+		t.Fatalf("expired replay: expected 204, got %d: %s", response.StatusCode, response.Body)
+	}
+	if got := countRows(t, db, "stock_movements"); got != movementsBefore {
+		t.Fatalf("expired replay created another stock movement: before=%d after=%d", movementsBefore, got)
+	}
+}
+
+func TestPaymentWebhookRetentionCleanupAgainstPostgres(t *testing.T) {
+	cfg := testsupport.IntegrationConfig(t)
+	db := testsupport.OpenPostgres(t, cfg)
+	repository := checkoutmodule.NewRepository(db)
+	now := time.Now().UTC()
+	eventsBefore := countRows(t, db, "payment_webhook_events")
+	if err := db.Exec(`INSERT INTO payment_webhook_events (provider, event_id, payment_reference, event_type, payload_hash, processed_at) VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)`,
+		"simulated", "retention-old", "pay_retention_old", "payment.paid", "old-hash", now.Add(-48*time.Hour),
+		"simulated", "retention-new", "pay_retention_new", "payment.paid", "new-hash", now.Add(-time.Hour)).Error; err != nil {
+		t.Fatalf("insert retention fixtures: %v", err)
+	}
+	deleted, err := repository.CleanupProcessedWebhookEvents(context.Background(), now.Add(-24*time.Hour))
+	if err != nil {
+		t.Fatalf("cleanup webhook events: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected one expired webhook event deleted, got %d", deleted)
+	}
+	if got := countRows(t, db, "payment_webhook_events"); got != eventsBefore+1 {
+		t.Fatalf("expected one retained webhook event: before=%d after=%d", eventsBefore, got)
 	}
 }
 

@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, buyer cart item management, the initial checkout flow, and buyer order detail reads. Cart ownership, current-stock validation, self-purchase prevention, idempotent checkout retries, order/payment creation, stock reservation, stock movements, buyer-owned order detail authorization, and checkout runtime coverage are implemented. Payment webhook processing, order lifecycle transitions, order listing, and audit-event producers remain future transaction scope.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, buyer cart item management, the initial checkout flow, buyer order detail reads, and signed payment webhook processing. Cart ownership, current-stock validation, self-purchase prevention, idempotent checkout retries, order/payment creation, stock reservation, webhook event replay protection, payment state transitions, expiry-triggered stock restoration, webhook retention cleanup, buyer-owned order detail authorization, and checkout/runtime coverage are implemented. Payment expiry scheduling/retry, order listing, refunds, and audit-event producers remain future transaction scope.
 
 ## Assets
 
@@ -111,7 +111,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations required:** Idempotency keys, atomic stock mutation, order/payment state transitions, webhook replay protection, per-user and per-IP limits, and audit/stock ledgers.
 
-**Current status:** Checkout uses PostgreSQL-backed idempotency records, deterministic product locking, conditional stock decrements, order/payment snapshots, and stock movements in one transaction. The webhook verifies HMAC/freshness, validates event payload/reference/amount, persists provider-event payload hashes, replays same-event retries safely, and transitions pending payment/order state atomically. SQLite E2E, PostgreSQL integration, and runtime smoke cover the successful payment path, concurrent duplicate delivery, and rollback of failed event claims.
+**Current status:** Checkout uses PostgreSQL-backed idempotency records, deterministic product locking, conditional stock decrements, order/payment snapshots, and stock movements in one transaction. The webhook verifies HMAC/freshness, validates event payload/reference/amount, persists provider-event payload hashes, replays same-event retries safely, and transitions pending payment/order state atomically. Completed checkout idempotency rows are retained for a configured replay window and cleaned separately from webhook events; pending rows are preserved. SQLite E2E, PostgreSQL integration, and runtime smoke cover the successful payment path, concurrent duplicate delivery, and rollback of failed event claims.
 
 ### API7:2023 Server Side Request Forgery
 
@@ -143,7 +143,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Verify HMAC with constant-time comparison, reject stale timestamps, deduplicate provider event IDs, validate amounts/references against local state, and apply explicit state transitions.
 
-**Current status:** The payment webhook verifies HMAC signatures with constant-time comparison, enforces timestamp freshness and a 64 KiB body bound, validates event schema and local amount/reference, persists durable `(provider, event_id, payload_hash)` inbox state, and applies pending→paid/failed/expired transitions without stock restoration. PostgreSQL integration proves concurrent duplicate serialization and rollback of failed event claims, while runtime smoke proves the current binary accepts a signed callback and exposes the paid order state. Retention cleanup and outbound provider integration remain pending.
+**Current status:** The payment webhook verifies HMAC signatures with constant-time comparison, enforces timestamp freshness and a 64 KiB body bound, validates event schema and local amount/reference, persists durable `(provider, event_id, payload_hash)` inbox state, and applies pending→paid/failed/expired transitions. An expired payment atomically moves the order to `cancelled`, restores reserved stock, and writes a cancellation movement; the worker deletes processed events older than the configured retention cutoff. PostgreSQL integration proves concurrent duplicate serialization, rollback of failed event claims, expiry restoration, and cleanup; runtime smoke proves the current binary accepts a signed callback and exposes the paid order state. Payment expiry scheduling/retry and outbound provider integration remain pending.
 
 ## Concrete attack scenarios
 
@@ -152,14 +152,14 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Seller A submits Seller B's product public ID to the update endpoint.
 - **Impact:** Unauthorized price, stock, or catalog mutation.
 - **Mitigation:** Update query must constrain both `product.public_id` and `product.seller_id = authenticated_user_id`; protected fields must come from explicit DTOs.
-- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Equivalent buyer/order ownership coverage remains pending until order endpoints exist.
+- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Order listing and broader order ownership projections remain future scope.
 
 ### 2. Two checkout requests consume the last stock
 
 - **Attack:** Send concurrent checkout requests for the same product with quantity equal to the remaining stock.
 - **Impact:** Overselling and inconsistent order/payment state.
 - **Mitigation:** Lock or conditionally update the product row inside the checkout transaction, insert `stock_movements` in the same transaction, and test concurrent requests.
-- **Residual risk:** The checkout path is implemented and verified through PostgreSQL integration and runtime tests, but a dedicated concurrent last-stock test is still required to provide direct oversell evidence under contention.
+- **Residual risk:** The checkout path is implemented and verified through PostgreSQL integration and runtime tests, including a dedicated concurrent last-stock test; broader production load testing remains pending.
 
 ### 3. Reuse a stolen refresh token
 
@@ -173,7 +173,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Send a fake payment-success callback or replay a valid callback after the order has changed state.
 - **Impact:** Unauthorized order payment or duplicate fulfillment.
 - **Mitigation:** HMAC verification, constant-time comparison, timestamp window, unique provider event ID, local payment-reference validation, and idempotent state transitions.
-- **Residual risk:** Not mitigated until the payment webhook endpoint is implemented.
+- **Residual risk:** HMAC key rotation and provider-side delivery behavior remain deployment/integration responsibilities; the endpoint itself is implemented and covered by E2E and PostgreSQL tests.
 
 ### 5. Brute-force a user account
 
@@ -201,7 +201,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** A seller uses the buyer capability of the same account to add their own product to a cart and later attempts to create an artificial sale.
 - **Impact:** Manipulated sales, revenue, promotion, or review metrics.
 - **Mitigation:** Cart item mutation compares the locked product `seller_id` with the authenticated actor ID and rejects a match with `commerce.self_purchase_not_allowed`. Checkout must repeat the same validation inside its transaction rather than trusting cart state.
-- **Residual risk:** Cart-time prevention and checkout-time defense-in-depth are implemented. A future order read surface still needs buyer-ownership regression coverage.
+- **Residual risk:** Cart-time prevention and checkout-time defense-in-depth are implemented. Broader order listing and administrative ownership projections remain future scope.
 
 ## Logging and privacy rules
 
@@ -213,7 +213,7 @@ The repository currently has implemented authentication, database-backed session
 
 ## What is not safe yet
 
-1. Cart lifecycle, cart ownership, current-stock validation, self-purchase prevention, checkout idempotency, order/payment creation, stock reservation, stock-ledger writes, and checkout HTTP/integration/runtime coverage are implemented. Concurrent last-stock proof, buyer order read ownership, audit-event producers, payment webhook verification, payment expiry/retry workers, and order cancellation/stock restoration are not implemented yet.
+1. Cart lifecycle, cart ownership, current-stock validation, self-purchase prevention, checkout idempotency, order/payment creation, stock reservation, stock-ledger writes, signed payment webhook processing, expiry-triggered cancellation/stock restoration, retention cleanup, and checkout/payment HTTP/integration/runtime coverage are implemented. Payment expiry scheduling/retry, buyer order listing, and audit-event producers remain future scope.
 2. `user_login_security_states` is wired into login failure tracking, five-attempt lockout, reset-after-success behavior, and PostgreSQL/integration/runtime coverage.
 3. JWT key rotation is implemented through `APP_JWT_SECRET` plus a bounded `APP_JWT_PREVIOUS_SECRETS` verification list; secret-manager integration and automated rotation orchestration are not implemented.
 4. Production Compose still requires a manual hardening pass in `deployments/compose/docker-compose.yml`: explicit deployment credentials, pinned application images, and internal-only PostgreSQL/Redis networking.

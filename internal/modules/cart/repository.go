@@ -88,7 +88,7 @@ func (r *Repository) SetItem(ctx context.Context, buyerID uint, productPublicID 
 			PriceAmount   int64
 			StockQuantity int
 		}
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 			Table("products").
 			Select("id, seller_id, name, price_amount, stock_quantity").
 			Where("public_id = ? AND status = ? AND deleted_at IS NULL", productPublicID, catalogconstants.ProductStatusActive).

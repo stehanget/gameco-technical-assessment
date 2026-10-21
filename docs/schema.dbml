@@ -243,7 +243,7 @@ Table checkout_idempotency_keys {
     (order_id) [name: 'idx_checkout_idempotency_order_id']
   }
 
-  Note: 'Coordinates concurrent retries of checkout. A repeated key with a different request hash must be rejected.'
+  Note: 'Coordinates concurrent retries of checkout. A repeated key with a different request hash must be rejected. Completed rows are retained for the configured replay window and then removed by maintenance; pending rows are preserved.'
 }
 
 Table payments {

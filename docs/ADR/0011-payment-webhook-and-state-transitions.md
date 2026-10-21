@@ -1,6 +1,6 @@
 # ADR-0011: Payment Webhook and State Transitions
 
-- **Status:** Accepted for implementation
+- **Status:** Accepted and implemented for the current webhook slice
 - **Date:** 2026-10-21
 - **Scope:** Simulated payment-provider webhook verification, idempotent event processing, and payment/order state transitions
 
@@ -55,7 +55,7 @@ Verification rules:
 
 The webhook secret is configuration-backed and must be supplied through the repository's normal secret configuration path. It must not be hardcoded, seeded, committed, or returned by any API.
 
-The first implementation slice covers configuration loading, clock-injected signature verification, and rejection of missing, malformed, stale, or mismatched authentication headers. Payment event decoding, durable event idempotency, and state transitions remain unimplemented until the next slice.
+The implemented slice covers configuration loading, clock-injected signature verification, rejection of missing, malformed, stale, or mismatched authentication headers, bounded event decoding, durable event idempotency, payment/order transitions, expiry-triggered cancellation and stock restoration, and processed-event retention cleanup.
 
 ### Request contract
 
@@ -126,12 +126,12 @@ payment.pending → payment.failed
 order.pending_payment → order.payment_failed
 
 payment.pending → payment.expired
-order.pending_payment → order.payment_failed
+order.pending_payment → order.cancelled
 ```
 
 A paid, failed, or expired payment is terminal for this slice. Out-of-order transitions that would regress a terminal state are rejected or treated as a safe no-op according to the stable event result; they must never move `paid` back to `pending` or `failed`.
 
-The webhook transaction must update the payment, order, and provider-event record together. It must not restore stock, cancel the order, call an external provider, publish a notification, or create an audit event in this initial slice. Those are separate decisions and follow-up slices.
+The webhook transaction updates the payment, order, provider-event record, and expiry-triggered stock restoration together. It does not call an external provider, publish a notification, or create an audit event. Those remain separate follow-up slices.
 
 ### HTTP error contract
 
@@ -154,7 +154,7 @@ The handler must return the shared safe error envelope and must not expose datab
 3. **Timestamp-only replay protection** — rejected because provider retries are legitimate and event identity must provide durable idempotency.
 4. **Redis-only event deduplication** — rejected because event idempotency must survive process restarts and remain atomic with PostgreSQL state transitions.
 5. **Store raw signatures/secrets for debugging** — rejected because it increases credential and replay exposure without improving transition correctness.
-6. **Restore stock on payment failure in the webhook** — deferred because cancellation/expiry and stock restoration need a separate order lifecycle decision.
+6. **Restore stock for every payment failure in the webhook** — rejected for this slice; only `payment.expired` cancels the order and restores the checkout reservation.
 
 ## Consequences
 
@@ -169,8 +169,8 @@ The handler must return the shared safe error envelope and must not expose datab
 ### Negative
 
 - A webhook request may wait on the provider-event or payment row lock.
-- Provider events require retention/cleanup policy in a later operational slice.
-- Payment failure does not yet restore stock or cancel the order.
+- Processed provider events are retained for the configured webhook replay window and removed by the maintenance worker; pending/unprocessed event rows are preserved.
+- Payment expiry scheduling/retry is not implemented, so cancellation/restoration currently occurs when a valid `payment.expired` webhook arrives.
 - External provider calls, retry workers, audit events, and notifications remain deferred.
 
 ## Required verification
@@ -187,16 +187,18 @@ The handler must return the shared safe error envelope and must not expose datab
 - [x] Concurrent duplicate delivery creates one transition and one processed event in PostgreSQL integration coverage.
 - [x] A failed transaction rolls back event claim and payment/order state in PostgreSQL integration coverage.
 - [x] SQLite E2E, PostgreSQL integration, and runtime smoke cover the authenticated order state after a successful webhook.
+- [x] An expired payment transitions the order to `cancelled` and restores reserved stock exactly once.
+- [x] Processed webhook events older than the configured retention cutoff are deleted by the cleanup repository; worker scheduling uses the same path.
 
 ## Explicitly deferred
 
 - outbound payment-provider API calls;
 - payment expiry scheduler and retry worker;
-- cancellation and stock restoration;
 - refunds and partial refunds;
 - transactional audit-event producer;
 - notification/outbox publication;
-- provider-event retention and cleanup worker.
+
+Webhook event retention defaults to seven days through `APP_PAYMENT_WEBHOOK_EVENT_RETENTION`; its cleanup cadence is controlled by `APP_PAYMENT_WEBHOOK_CLEANUP_INTERVAL`.
 
 ## References
 

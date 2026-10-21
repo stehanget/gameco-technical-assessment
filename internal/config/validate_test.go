@@ -8,11 +8,15 @@ import (
 func validConfig() Config {
 	return Config{
 		App: AppConfig{
-			Name:            "test",
-			Port:            "8080",
-			JWTSecret:       "test-secret",
-			AccessTokenTTL:  time.Minute,
-			RefreshTokenTTL: time.Hour,
+			Name:                               "test",
+			Port:                               "8080",
+			JWTSecret:                          "test-secret",
+			PaymentWebhookEventRetention:       7 * 24 * time.Hour,
+			PaymentWebhookCleanupInterval:      time.Hour,
+			CheckoutIdempotencyRetention:       30 * 24 * time.Hour,
+			CheckoutIdempotencyCleanupInterval: time.Hour,
+			AccessTokenTTL:                     time.Minute,
+			RefreshTokenTTL:                    time.Hour,
 		},
 		Postgres: PostgresConfig{Host: "localhost", Port: "5432", User: "user", Database: "db"},
 		Redis:    RedisConfig{Addr: "localhost:6379"},

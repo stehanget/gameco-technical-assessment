@@ -55,14 +55,14 @@ func (r *Repository) Checkout(ctx context.Context, buyerID uint, key, requestHas
 	var response OrderResponse
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var idem IdempotencyKey
-		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		result := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 			Where("buyer_id = ? AND idempotency_key = ?", buyerID, key).First(&idem)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			idem = IdempotencyKey{BuyerID: buyerID, IdempotencyKey: key, RequestHash: requestHash}
 			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&idem).Error; err != nil {
 				return err
 			}
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 				Where("buyer_id = ? AND idempotency_key = ?", buyerID, key).First(&idem).Error; err != nil {
 				return err
 			}
@@ -82,29 +82,33 @@ func (r *Repository) Checkout(ctx context.Context, buyerID uint, key, requestHas
 		}
 
 		var cartID uint
-		cartLock := ""
+		cartQuery := tx.Table("carts").
+			Select("id").
+			Where("buyer_id = ? AND status = 'active'", buyerID)
 		if tx.Dialector.Name() == "postgres" {
-			cartLock = " FOR UPDATE"
+			cartQuery = cartQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 		}
-		if err := tx.Raw("SELECT id FROM carts WHERE buyer_id = ? AND status = 'active'"+cartLock, buyerID).Scan(&cartID).Error; err != nil {
+		if err := cartQuery.Scan(&cartID).Error; err != nil {
 			return err
 		}
 		if cartID == 0 {
 			return errEmptyCart
 		}
 		var lines []checkoutLine
-		productLock := ""
+		productQuery := tx.Table("cart_items ci").
+			Select(`p.id AS product_id, p.public_id AS product_public_id, p.seller_id,
+				p.name AS product_name, p.price_amount AS unit_price_amount,
+				ci.quantity, p.stock_quantity, p.status, p.deleted_at`).
+			Joins("JOIN products p ON p.id = ci.product_id").
+			Where("ci.cart_id = ?", cartID).
+			Order("p.id")
 		if tx.Dialector.Name() == "postgres" {
-			productLock = " FOR UPDATE OF p"
+			productQuery = productQuery.Clauses(clause.Locking{
+				Strength: clause.LockingStrengthUpdate,
+				Table:    clause.Table{Name: "p"},
+			})
 		}
-		if err := tx.Raw(`
-			SELECT p.id AS product_id, p.public_id AS product_public_id, p.seller_id,
-			       p.name AS product_name, p.price_amount AS unit_price_amount,
-			       ci.quantity, p.stock_quantity, p.status, p.deleted_at
-			FROM cart_items ci
-			JOIN products p ON p.id = ci.product_id
-			WHERE ci.cart_id = ?
-			ORDER BY p.id`+productLock, cartID).Scan(&lines).Error; err != nil {
+		if err := productQuery.Scan(&lines).Error; err != nil {
 			return err
 		}
 		if len(lines) == 0 {
@@ -193,7 +197,7 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 			return err
 		}
 		var stored PaymentWebhookEvent
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 			Where("provider = ? AND event_id = ?", simulatedPaymentProvider, event.EventID).
 			First(&stored).Error; err != nil {
 			return err
@@ -208,7 +212,7 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 		var payment Payment
 		paymentQuery := tx.Where("payment_reference = ?", event.PaymentReference)
 		if tx.Dialector.Name() == "postgres" {
-			paymentQuery = paymentQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+			paymentQuery = paymentQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 		}
 		if err := paymentQuery.First(&payment).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 			return errWebhookPaymentNotFound
@@ -222,7 +226,7 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 		var order Order
 		orderQuery := tx.Where("id = ?", payment.OrderID)
 		if tx.Dialector.Name() == "postgres" {
-			orderQuery = orderQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+			orderQuery = orderQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 		}
 		if err := orderQuery.First(&order).Error; err != nil {
 			return err
@@ -248,7 +252,14 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 				if err := tx.Model(&payment).Updates(updates).Error; err != nil {
 					return err
 				}
-				if err := tx.Model(&order).Update("status", "payment_failed").Error; err != nil {
+				orderStatus := "payment_failed"
+				if event.EventType == "payment.expired" {
+					if err := restoreOrderStock(tx, order.ID); err != nil {
+						return err
+					}
+					orderStatus = "cancelled"
+				}
+				if err := tx.Model(&order).Update("status", orderStatus).Error; err != nil {
 					return err
 				}
 			default:
@@ -261,6 +272,56 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 		}
 		return tx.Model(&stored).Update("processed_at", now).Error
 	})
+}
+
+func (r *Repository) CleanupProcessedWebhookEvents(ctx context.Context, cutoff time.Time) (int64, error) {
+	result := r.db.WithContext(ctx).
+		Where("processed_at IS NOT NULL AND processed_at < ?", cutoff).
+		Delete(&PaymentWebhookEvent{})
+	return result.RowsAffected, result.Error
+}
+
+func (r *Repository) CleanupCompletedIdempotencyKeys(ctx context.Context, cutoff time.Time) (int64, error) {
+	result := r.db.WithContext(ctx).
+		Where("order_id IS NOT NULL AND updated_at < ?", cutoff).
+		Delete(&IdempotencyKey{})
+	return result.RowsAffected, result.Error
+}
+
+func restoreOrderStock(tx *gorm.DB, orderID uint) error {
+	var items []struct {
+		ID          uint
+		ProductID   uint
+		Quantity    int
+		StockBefore int
+	}
+	query := tx.Table("order_items oi").
+		Select("oi.id, oi.product_id, oi.quantity, p.stock_quantity AS stock_before").
+		Joins("JOIN products p ON p.id = oi.product_id").
+		Where("oi.order_id = ?", orderID).
+		Order("oi.product_id, oi.id")
+	if tx.Dialector.Name() == "postgres" {
+		query = query.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
+	}
+	if err := query.Scan(&items).Error; err != nil {
+		return err
+	}
+	for _, item := range items {
+		if err := tx.Model(&struct{}{}).Table("products").
+			Where("id = ?", item.ProductID).
+			UpdateColumn("stock_quantity", gorm.Expr("stock_quantity + ?", item.Quantity)).Error; err != nil {
+			return err
+		}
+		if err := tx.Table("stock_movements").Create(map[string]any{
+			"product_id": item.ProductID, "order_id": orderID, "order_item_id": item.ID,
+			"movement_type": "cancellation", "quantity_delta": item.Quantity,
+			"stock_before": item.StockBefore, "stock_after": item.StockBefore + item.Quantity,
+			"reason": "payment expired stock restoration",
+		}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func loadOrder(tx *gorm.DB, orderID uint) (OrderResponse, error) {

@@ -90,7 +90,7 @@ func (r *Repository) FindLoginSecurityState(ctx context.Context, userID uint) (L
 func (r *Repository) RecordLoginFailure(ctx context.Context, userID uint, now time.Time, lockUntil time.Time) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var state LoginSecurityState
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&state).Error
+		err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).Where("user_id = ?", userID).First(&state).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return tx.Create(&LoginSecurityState{
 				UserID:             userID,
@@ -202,7 +202,7 @@ func (r *Repository) UpdateSession(ctx context.Context, session AuthSession) err
 func (r *Repository) RotateRefreshSession(ctx context.Context, refreshHash string, replacement AuthSession) (AuthSession, error) {
 	var oldSession AuthSession
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 			Where("refresh_hash = ? AND revoked_at IS NULL AND expires_at > ?", refreshHash, r.clock.Now()).
 			First(&oldSession).Error
 		if err != nil {
