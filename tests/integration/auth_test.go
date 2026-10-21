@@ -5,6 +5,7 @@ package integration
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -68,18 +69,11 @@ func postJSON(t *testing.T, url string, payload any) httpResponse {
 		t.Fatalf("post JSON: %v", err)
 	}
 	defer response.Body.Close()
-	var responseBody struct {
-		Success bool      `json:"success"`
-		Data    tokenData `json:"data"`
-	}
-	if err := json.NewDecoder(response.Body).Decode(&responseBody); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	encoded, err := json.Marshal(responseBody)
+	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		t.Fatalf("encode response: %v", err)
+		t.Fatalf("read response: %v", err)
 	}
-	return httpResponse{StatusCode: response.StatusCode, Body: string(encoded)}
+	return httpResponse{StatusCode: response.StatusCode, Body: string(responseBody)}
 }
 
 type tokenResponse struct {

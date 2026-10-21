@@ -16,6 +16,7 @@ import (
 func NewAPI(t *testing.T, cfg config.Config) *httptest.Server {
 	t.Helper()
 	db := OpenPostgres(t, cfg)
+	AssertMigrationsApplied(t, db)
 	redisClient := OpenRedis(t, cfg)
 	clock := platformclock.System{}
 	container := &app.Container{

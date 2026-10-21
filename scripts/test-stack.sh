@@ -48,7 +48,7 @@ start_test_dependencies() {
 }
 
 stop_test_dependencies() {
-  test_compose down -v >/dev/null 2>&1 || true
+  test_compose down --timeout 10 -v >/dev/null 2>&1 || true
 }
 
 prepare_test_database() {

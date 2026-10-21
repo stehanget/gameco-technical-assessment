@@ -3,87 +3,14 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"log"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
-	"time"
-
-	app "gameco-technical-assessment/internal/app"
-	"gameco-technical-assessment/internal/config"
-	authmodule "gameco-technical-assessment/internal/modules/auth"
-	catalogmodule "gameco-technical-assessment/internal/modules/catalog"
-	platformauth "gameco-technical-assessment/internal/platform/auth"
-	"gameco-technical-assessment/internal/seeds"
-
-	"github.com/alicebob/miniredis/v2"
-	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func TestAuthRegisterLoginThenMe(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	db, err := gorm.Open(sqlite.Open("file:auth-e2e?mode=memory&cache=shared"), &gorm.Config{
-		Logger: logger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			logger.Config{
-				SlowThreshold:             200 * time.Millisecond,
-				LogLevel:                  logger.Warn,
-				IgnoreRecordNotFoundError: true,
-				Colorful:                  false,
-			},
-		),
-	})
-	if err != nil {
-		t.Fatalf("open sqlite database: %v", err)
-	}
-	if err := db.AutoMigrate(
-		&authmodule.User{},
-		&authmodule.Role{},
-		&authmodule.Permission{},
-		&authmodule.RolePermission{},
-		&authmodule.UserRole{},
-		&authmodule.AuthSession{},
-		&catalogmodule.Category{},
-		&catalogmodule.Product{},
-	); err != nil {
-		t.Fatalf("migrate sqlite database: %v", err)
-	}
-	if _, err := seeds.NewRunner(db).Run(); err != nil {
-		t.Fatalf("seed authorization catalog: %v", err)
-	}
-
-	mini := miniredis.RunT(t)
-	redisClient := redis.NewClient(&redis.Options{Addr: mini.Addr()})
-	t.Cleanup(func() { _ = redisClient.Close() })
-
-	container := &app.Container{
-		Config: config.Config{
-			App: config.AppConfig{
-				Env:             "test",
-				JWTSecret:       "test-secret",
-				AccessTokenTTL:  15 * time.Minute,
-				RefreshTokenTTL: time.Hour,
-			},
-			RateLimit: config.RateLimitConfig{
-				Anonymous:     config.RateLimitPolicyConfig{Limit: 1000, Window: time.Minute},
-				Authenticated: config.RateLimitPolicyConfig{Limit: 1000, Window: time.Minute},
-			},
-		},
-		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
-		DB:        db,
-		Redis:     redisClient,
-		JWTSigner: platformauth.NewJWTManager("test-secret"),
-	}
-	router := app.NewRouter(container)
+	router := newE2ERouter(t)
 
 	registerBody := `{"email":"e2e@example.com","password":"correct-horse-battery-staple"}`
 	registerRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(registerBody))

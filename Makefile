@@ -44,7 +44,7 @@ test-e2e:
 
 check: fmt-check lint test
 	$(GO) vet ./...
-	git diff --check
+	git --no-pager diff --check --no-ext-diff --no-textconv HEAD --
 
 test-integration:
 	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/test-integration.sh

@@ -16,6 +16,15 @@ api_pid=""
 cleanup() {
   if [[ -n "${api_pid}" ]]; then
     kill "${api_pid}" 2>/dev/null || true
+    for _ in $(seq 1 50); do
+      if ! kill -0 "${api_pid}" 2>/dev/null; then
+        break
+      fi
+      sleep 0.1
+    done
+    if kill -0 "${api_pid}" 2>/dev/null; then
+      kill -KILL "${api_pid}" 2>/dev/null || true
+    fi
     wait "${api_pid}" 2>/dev/null || true
   fi
   stop_test_dependencies
