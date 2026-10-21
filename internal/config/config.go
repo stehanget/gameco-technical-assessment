@@ -25,3 +25,7 @@ func Load() (Config, error) {
 		RateLimit: loadRateLimitConfig(),
 	}, nil
 }
+
+func LoadPostgres() Config {
+	return Config{Postgres: loadPostgresConfig()}
+}

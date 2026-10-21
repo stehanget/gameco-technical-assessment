@@ -125,15 +125,26 @@ http://localhost:8080/swagger/index.html
 make docker-dev-up
 make docker-dev-down
 make docker-dev-reset
-make docker-ps
+make docker-dev-ps
 make docker-migrate-up
 make docker-migrate-down
-make docker-seed
+make docker-dev-seed
 make docker-swagger
 make docker-fmt
 make docker-lint
 make docker-test
 make docker-test-e2e
+make docker-test-integration
+make docker-test-runtime
+make docker-dev-logs
+```
+
+For the base/production Compose stack:
+
+```bash
+make docker-up
+make docker-seed
+make docker-ps
 make docker-logs
 ```
 
@@ -204,7 +215,7 @@ internal/
   workers/                   # background jobs and queue processing
 migrations/                  # Goose SQL migrations
 tests/
-  e2e/                       # fast SQLite + miniredis HTTP tests
+  e2e/                       # PostgreSQL + Redis HTTP tests
   integration/               # real PostgreSQL/Redis in-process HTTP tests
   runtime/                   # real API binary black-box HTTP tests
   support/                   # shared real-dependency test harness
@@ -235,6 +246,7 @@ scripts/                     # repository helper scripts
 - [Database schema](docs/schema.dbml) — current auth schema and planned marketplace domain model
 - [Threat model](docs/THREAT-MODEL.md) — OWASP API risks, attack scenarios, mitigations, and residual risks
 - [Architecture decisions](docs/ADR/README.md) — accepted session, data model, stock concurrency, rate-limit, and CORS decisions
+- [Assessment handoff](docs/assessment-handoff.md) — delivered scope, verification evidence, and operational follow-up
 - [Technical assessment](docs/technical-assessment.md) — original marketplace technical-assessment requirements
 
 ---

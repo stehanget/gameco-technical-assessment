@@ -201,7 +201,7 @@ make docker-swagger
 ### Watch logs
 
 ```bash
-make docker-logs
+make docker-dev-logs
 ```
 
 ### Stop the stack

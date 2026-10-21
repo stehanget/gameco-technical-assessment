@@ -85,9 +85,7 @@ func (r *Repository) Checkout(ctx context.Context, buyerID uint, key, requestHas
 		cartQuery := tx.Table("carts").
 			Select("id").
 			Where("buyer_id = ? AND status = 'active'", buyerID)
-		if tx.Dialector.Name() == "postgres" {
-			cartQuery = cartQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
-		}
+		cartQuery = cartQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 		if err := cartQuery.Scan(&cartID).Error; err != nil {
 			return err
 		}
@@ -102,12 +100,10 @@ func (r *Repository) Checkout(ctx context.Context, buyerID uint, key, requestHas
 			Joins("JOIN products p ON p.id = ci.product_id").
 			Where("ci.cart_id = ?", cartID).
 			Order("p.id")
-		if tx.Dialector.Name() == "postgres" {
-			productQuery = productQuery.Clauses(clause.Locking{
-				Strength: clause.LockingStrengthUpdate,
-				Table:    clause.Table{Name: "p"},
-			})
-		}
+		productQuery = productQuery.Clauses(clause.Locking{
+			Strength: clause.LockingStrengthUpdate,
+			Table:    clause.Table{Name: "p"},
+		})
 		if err := productQuery.Scan(&lines).Error; err != nil {
 			return err
 		}
@@ -211,9 +207,7 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 
 		var payment Payment
 		paymentQuery := tx.Where("payment_reference = ?", event.PaymentReference)
-		if tx.Dialector.Name() == "postgres" {
-			paymentQuery = paymentQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
-		}
+		paymentQuery = paymentQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 		if err := paymentQuery.First(&payment).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 			return errWebhookPaymentNotFound
 		} else if err != nil {
@@ -225,9 +219,7 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 
 		var order Order
 		orderQuery := tx.Where("id = ?", payment.OrderID)
-		if tx.Dialector.Name() == "postgres" {
-			orderQuery = orderQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
-		}
+		orderQuery = orderQuery.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 		if err := orderQuery.First(&order).Error; err != nil {
 			return err
 		}
@@ -300,9 +292,7 @@ func restoreOrderStock(tx *gorm.DB, orderID uint) error {
 		Joins("JOIN products p ON p.id = oi.product_id").
 		Where("oi.order_id = ?", orderID).
 		Order("oi.product_id, oi.id")
-	if tx.Dialector.Name() == "postgres" {
-		query = query.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
-	}
+	query = query.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate})
 	if err := query.Scan(&items).Error; err != nil {
 		return err
 	}

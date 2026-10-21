@@ -11,3 +11,12 @@ func defaultSeeders() []Seeder {
 		NewProductSeeder(),
 	}
 }
+
+func productionSeeders() []Seeder {
+	return []Seeder{
+		NewPermissionSeeder(),
+		NewRoleSeeder(),
+		NewRolePermissionSeeder(),
+		NewCategorySeeder(),
+	}
+}

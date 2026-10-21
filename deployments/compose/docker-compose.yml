@@ -10,7 +10,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test:
         [
@@ -51,7 +51,7 @@ services:
     image: ghcr.io/stehanget/gameco-technical-assessment-api:latest
     environment:
       APP_NAME: ${APP_NAME:-app}
-      APP_ENV: ${APP_ENV:-development}
+      APP_ENV: ${APP_ENV:-production}
       APP_PORT: ${APP_PORT:-8080}
       APP_READ_TIMEOUT: ${APP_READ_TIMEOUT:-10s}
       APP_WRITE_TIMEOUT: ${APP_WRITE_TIMEOUT:-10s}
@@ -87,7 +87,7 @@ services:
     image: ghcr.io/stehanget/gameco-technical-assessment-worker:latest
     environment:
       APP_NAME: ${APP_NAME:-app}
-      APP_ENV: ${APP_ENV:-development}
+      APP_ENV: ${APP_ENV:-production}
       APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET must be set}
       APP_JWT_PREVIOUS_SECRETS: ${APP_JWT_PREVIOUS_SECRETS:-}
       APP_PAYMENT_WEBHOOK_SECRET: ${APP_PAYMENT_WEBHOOK_SECRET:-}

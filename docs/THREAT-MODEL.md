@@ -111,7 +111,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations required:** Idempotency keys, atomic stock mutation, order/payment state transitions, webhook replay protection, per-user and per-IP limits, and audit/stock ledgers.
 
-**Current status:** Checkout uses PostgreSQL-backed idempotency records, deterministic product locking, conditional stock decrements, order/payment snapshots, and stock movements in one transaction. The webhook verifies HMAC/freshness, validates event payload/reference/amount, persists provider-event payload hashes, replays same-event retries safely, and transitions pending payment/order state atomically. Completed checkout idempotency rows are retained for a configured replay window and cleaned separately from webhook events; pending rows are preserved. SQLite E2E, PostgreSQL integration, and runtime smoke cover the successful payment path, concurrent duplicate delivery, and rollback of failed event claims.
+**Current status:** Checkout uses PostgreSQL-backed idempotency records, deterministic product locking, conditional stock decrements, order/payment snapshots, and stock movements in one transaction. The webhook verifies HMAC/freshness, validates event payload/reference/amount, persists provider-event payload hashes, replays same-event retries safely, and transitions pending payment/order state atomically. Completed checkout idempotency rows are retained for a configured replay window and cleaned separately from webhook events; pending rows are preserved. PostgreSQL/Redis E2E, PostgreSQL integration, and runtime smoke cover the successful payment path, concurrent duplicate delivery, and rollback of failed event claims.
 
 ### API7:2023 Server Side Request Forgery
 

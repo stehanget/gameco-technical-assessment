@@ -54,9 +54,9 @@ Good for deterministic logic, helpers, middleware, services, and small rules.
 make test
 ```
 
-`make test` runs `go test -v ./...` and shows individual test names.
+`make test` runs `go test -v ./internal/...` and shows individual test names.
 
-### SQLite HTTP E2E tests
+### PostgreSQL/Redis HTTP E2E tests
 
 Located under:
 
@@ -66,12 +66,12 @@ tests/e2e/
 
 These use:
 
-- SQLite in-memory;
-- miniredis;
+- PostgreSQL;
+- Redis;
 - `httptest`;
 - the real router, middleware, handlers, services, and repositories.
 
-They are fast in-process HTTP tests. They are useful for route and contract coverage, but they are **not PostgreSQL compatibility proof**.
+They are in-process HTTP tests backed by the same PostgreSQL/Redis boundary used by the integration suite.
 
 ### PostgreSQL/Redis integration tests
 
@@ -161,7 +161,7 @@ Use `make lint` before PR/merge.
 make test
 ```
 
-### Run SQLite HTTP E2E tests
+### Run PostgreSQL/Redis HTTP E2E tests
 
 ```bash
 make test-e2e
@@ -197,11 +197,12 @@ make verify
 
 ```text
 make check
+make test-e2e
 make test-integration
 make test-runtime
 ```
 
-`make check` covers formatting, lint, verbose package tests, vet, and `git diff --check`. The integration and runtime layers are intentionally separate because they require PostgreSQL/Redis and a real API process.
+`make check` covers formatting, lint, verbose internal package tests, vet, and `git diff --check`. The E2E, integration, and runtime layers are intentionally separate because they require PostgreSQL/Redis and, for runtime tests, a real API process.
 
 ### Run one Go package
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 )
 
 func main() {
+	mode := flag.String("mode", "demo", "seed mode: demo or production")
+	flag.Parse()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
@@ -23,7 +27,17 @@ func main() {
 		_ = database.CloseGORM(db)
 	}()
 
-	report, err := seeds.NewRunner(db).Run()
+	var runner *seeds.Runner
+	switch *mode {
+	case "demo":
+		runner = seeds.NewRunner(db)
+	case "production":
+		runner = seeds.NewProductionRunner(db)
+	default:
+		log.Fatalf("unsupported seed mode %q: expected demo or production", *mode)
+	}
+
+	report, err := runner.Run()
 	if err != nil {
 		log.Fatal(err)
 	}

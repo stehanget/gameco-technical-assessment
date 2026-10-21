@@ -37,6 +37,22 @@ services:
       redis:
         condition: service_healthy
 
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.migrate
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-disable}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   go-mod-cache:
   go-build-cache:

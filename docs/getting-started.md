@@ -163,7 +163,7 @@ If this works, your local setup is basically healthy.
 If you want ready-made demo users and sample rows instead of registering everything manually:
 
 ```bash
-make docker-seed
+make docker-dev-seed
 ```
 
 That gives you predictable demo credentials and sample rows.

@@ -186,7 +186,7 @@ The handler must return the shared safe error envelope and must not expose datab
 - [x] Same event ID with a different payload hash returns a conflict.
 - [x] Concurrent duplicate delivery creates one transition and one processed event in PostgreSQL integration coverage.
 - [x] A failed transaction rolls back event claim and payment/order state in PostgreSQL integration coverage.
-- [x] SQLite E2E, PostgreSQL integration, and runtime smoke cover the authenticated order state after a successful webhook.
+- [x] PostgreSQL/Redis E2E, PostgreSQL integration, and runtime smoke cover the authenticated order state after a successful webhook.
 - [x] An expired payment transitions the order to `cancelled` and restores reserved stock exactly once.
 - [x] Processed webhook events older than the configured retention cutoff are deleted by the cleanup repository; worker scheduling uses the same path.
 

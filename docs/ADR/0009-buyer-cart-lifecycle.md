@@ -98,7 +98,7 @@ The response always serializes both `items` and `unavailable_items` as arrays, i
 - PUT retries converge on the same quantity.
 - Cart state does not reserve inventory or require expiration logic.
 - Checkout can implement its own idempotent atomic transaction without inheriting cart mutation behavior.
-- The API contract can be tested independently with SQLite E2E, PostgreSQL integration, and runtime binary tests.
+- The API contract can be tested independently with PostgreSQL/Redis E2E, PostgreSQL integration, and runtime binary tests.
 
 ### Negative
 

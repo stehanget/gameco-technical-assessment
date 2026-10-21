@@ -40,3 +40,12 @@ func TestValidateAcceptsConfiguredJWTSecret(t *testing.T) {
 		t.Fatalf("expected configured JWT secret to pass validation: %v", err)
 	}
 }
+
+func TestLoadPostgresDoesNotRequireApplicationSecrets(t *testing.T) {
+	t.Setenv("APP_JWT_SECRET", "")
+
+	config := LoadPostgres()
+	if config.Postgres.Host == "" || config.Postgres.Database == "" {
+		t.Fatal("expected PostgreSQL configuration to load without application secrets")
+	}
+}

@@ -1,11 +1,15 @@
 GO ?= go
 COMPOSE_FILE ?= deployments/compose/docker-compose.yml
 DEV_COMPOSE_FILE ?= deployments/compose/docker-compose.dev.yml
-DOCKER_GO_IMAGE ?= golang:1.25
 DOCKER_WORKDIR ?= /app
+DOCKER_GO_IMAGE ?= golang:1.25
+DOCKER_GO_RUN ?= docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE)
+ENV_FILE ?= .env
+DOCKER_COMPOSE ?= docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE)
+DOCKER_DEV_COMPOSE ?= docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE)
 TEST_ENV_FILE ?= .env.test
 
-.PHONY: run worker seed migrate-up migrate-down build fmt fmt-check tidy test test-e2e test-integration test-runtime check verify lint install-hooks swagger docker-swagger docker-up docker-dev-up docker-dev-down docker-dev-reset docker-down docker-logs docker-ps docker-migrate-up docker-migrate-down docker-build docker-test docker-test-e2e docker-fmt docker-lint docker-seed
+.PHONY: run worker seed migrate-up migrate-down build fmt fmt-check tidy test test-e2e test-integration test-runtime check verify lint install-hooks swagger docker-swagger docker-up docker-infra-up docker-dev-up docker-dev-down docker-dev-reset docker-down docker-logs docker-dev-logs docker-ps docker-dev-ps docker-migrate-up docker-migrate-down docker-dev-migrate-up docker-dev-migrate-down docker-build docker-test docker-test-e2e docker-test-integration docker-test-runtime docker-fmt docker-lint docker-seed docker-dev-seed
 
 run:
 	$(GO) run ./cmd/api
@@ -37,14 +41,10 @@ tidy:
 	$(GO) mod tidy
 
 test:
-	$(GO) test -v ./...
+	$(GO) test -v ./internal/...
 
 test-e2e:
-	$(GO) test -v ./tests/e2e -count=1
-
-check: fmt-check lint test
-	$(GO) vet ./...
-	git --no-pager diff --check --no-ext-diff --no-textconv HEAD --
+	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/test-e2e.sh
 
 test-integration:
 	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/test-integration.sh
@@ -52,7 +52,11 @@ test-integration:
 test-runtime:
 	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/test-runtime.sh
 
-verify: check test-integration test-runtime
+check: fmt-check lint test
+	$(GO) vet ./...
+	git --no-pager diff --check --no-ext-diff --no-textconv HEAD --
+
+verify: check test-e2e test-integration test-runtime
 
 lint:
 	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
@@ -65,49 +69,73 @@ swagger:
 	$(GO) run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/swagger.go -o docs/swagger
 
 docker-swagger:
-	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/swagger.go -o docs/swagger'
-
-docker-build:
-	docker compose -f $(COMPOSE_FILE) build api worker migrate
+	$(DOCKER_GO_RUN) sh -c 'go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/swagger.go -o docs/swagger'
 
 docker-up:
-	docker compose -f $(COMPOSE_FILE) up -d postgres redis
+	$(DOCKER_COMPOSE) up -d
 
-docker-dev-up:
-	docker compose -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE) up --build -d postgres redis api worker
-
-docker-dev-down:
-	docker compose -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE) down
-
-docker-dev-reset:
-	docker compose -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE) down -v
-
-docker-ps:
-	docker compose -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE) ps
-
-docker-migrate-up:
-	docker compose -f $(COMPOSE_FILE) run --rm migrate up
-
-docker-migrate-down:
-	docker compose -f $(COMPOSE_FILE) run --rm migrate down
-
-docker-test:
-	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go test ./...'
-
-docker-test-e2e:
-	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go test ./tests/e2e -count=1'
-
-docker-fmt:
-	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go run mvdan.cc/gofumpt@latest -w . && go run golang.org/x/tools/cmd/goimports@latest -w .'
-
-docker-lint:
-	docker run --rm -v "$(CURDIR):$(DOCKER_WORKDIR)" -w $(DOCKER_WORKDIR) $(DOCKER_GO_IMAGE) sh -lc 'go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run'
-
-docker-seed:
-	docker compose -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE) run --rm api go run ./cmd/seed
+docker-infra-up:
+	$(DOCKER_COMPOSE) up -d postgres redis
 
 docker-down:
-	docker compose -f $(COMPOSE_FILE) down
+	$(DOCKER_COMPOSE) down
 
 docker-logs:
-	docker compose -f $(COMPOSE_FILE) -f $(DEV_COMPOSE_FILE) logs -f api worker postgres redis
+	$(DOCKER_COMPOSE) logs -f
+
+docker-ps:
+	$(DOCKER_COMPOSE) ps
+
+docker-build:
+	$(DOCKER_DEV_COMPOSE) build api worker migrate
+
+docker-test:
+	$(DOCKER_GO_RUN) sh -c 'go test -v ./internal/...'
+
+docker-test-e2e:
+	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/docker-test-suite.sh e2e
+
+docker-test-integration:
+	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/docker-test-suite.sh integration
+
+docker-test-runtime:
+	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/docker-test-suite.sh runtime
+
+docker-fmt:
+	$(DOCKER_GO_RUN) sh -c 'go run mvdan.cc/gofumpt@latest -w . && go run golang.org/x/tools/cmd/goimports@latest -w .'
+
+docker-lint:
+	$(DOCKER_GO_RUN) sh -c 'go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run'
+
+docker-migrate-up:
+	$(DOCKER_COMPOSE) run --rm migrate up
+
+docker-migrate-down:
+	$(DOCKER_COMPOSE) run --rm migrate down
+
+docker-seed: docker-migrate-up
+	$(DOCKER_COMPOSE) run --rm --no-deps --entrypoint /app/seed api --mode=production
+
+docker-dev-up:
+	$(DOCKER_DEV_COMPOSE) up --build -d
+
+docker-dev-down:
+	$(DOCKER_DEV_COMPOSE) down
+
+docker-dev-reset:
+	$(DOCKER_DEV_COMPOSE) down -v
+
+docker-dev-logs:
+	$(DOCKER_DEV_COMPOSE) logs -f
+
+docker-dev-ps:
+	$(DOCKER_DEV_COMPOSE) ps
+
+docker-dev-migrate-up:
+	$(DOCKER_DEV_COMPOSE) run --rm migrate up
+
+docker-dev-migrate-down:
+	$(DOCKER_DEV_COMPOSE) run --rm migrate down
+
+docker-dev-seed:
+	$(DOCKER_DEV_COMPOSE) run --rm api go run ./cmd/seed

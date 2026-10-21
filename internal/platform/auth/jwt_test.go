@@ -70,7 +70,7 @@ func TestJWTManagerSupportsPreviousSecrets(t *testing.T) {
 }
 
 func TestJWTManagerUsesInjectedClock(t *testing.T) {
-	issuedAt := time.Date(2026, 10, 21, 10, 15, 30, 0, time.UTC)
+	issuedAt := time.Date(2099, 10, 21, 10, 15, 30, 0, time.UTC)
 	manager := NewJWTManagerWithClock("secret", platformclock.Fixed{Current: issuedAt})
 	token, err := manager.GenerateAccessToken("42", "fixed-session", time.Minute)
 	if err != nil {

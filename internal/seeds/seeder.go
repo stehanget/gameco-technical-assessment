@@ -32,6 +32,10 @@ func NewRunner(db *gorm.DB) *Runner {
 	return &Runner{db: db, seeders: defaultSeeders()}
 }
 
+func NewProductionRunner(db *gorm.DB) *Runner {
+	return &Runner{db: db, seeders: productionSeeders()}
+}
+
 func (r *Runner) Run() (Report, error) {
 	report := Report{}
 	err := r.db.Transaction(func(tx *gorm.DB) error {

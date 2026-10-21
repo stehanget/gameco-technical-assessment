@@ -40,15 +40,23 @@ The worker is also where Redis-backed background jobs are processed.
 
 ## 3. Main Docker commands
 
-### Start only infra
+### Start only infra for a host-running API/worker
 
 ```bash
-make docker-up
+make docker-infra-up
 ```
 
 Starts:
 - postgres
 - redis
+
+### Start the complete base stack
+
+```bash
+make docker-up
+```
+
+Starts the base Compose services, including the migration service, API, and worker using their configured images.
 
 ### Start full dev stack
 
@@ -79,7 +87,7 @@ Use this if you want a clean local database/Redis volume state.
 ### Show running containers
 
 ```bash
-make docker-ps
+make docker-dev-ps
 ```
 
 Container names are prefixed by the Compose project name, which defaults to `APP_NAME` from `.env` or `.env.example`.
@@ -97,10 +105,18 @@ make docker-build
 make docker-migrate-up
 ```
 
-### Seed optional demo data
+### Seed production bootstrap data
 
 ```bash
 make docker-seed
+```
+
+This target runs the base image's production-safe seed mode after migrations. It seeds authorization reference data and catalog categories only; it does not create the demo user or demo products.
+
+### Seed optional demo data in development
+
+```bash
+make docker-dev-seed
 ```
 
 Use this when you want the predictable `user@mail.com` bootstrap user with buyer and seller roles.
@@ -117,16 +133,20 @@ make docker-migrate-down
 make docker-swagger
 ```
 
-### Run Go tests in Docker
+### Run fast Go tests in Docker
 
 ```bash
 make docker-test
 ```
 
-### Run focused e2e test in Docker
+### Run PostgreSQL E2E, integration, and runtime tests fully in Docker
+
+These targets start a disposable PostgreSQL and Redis test stack, run migrations and seed data in a Go test container, then clean up the test stack automatically. They require `.env.test` but do not require Go installed on the host.
 
 ```bash
 make docker-test-e2e
+make docker-test-integration
+make docker-test-runtime
 ```
 
 ### Run formatting in Docker
@@ -138,7 +158,7 @@ make docker-fmt
 ### Tail logs
 
 ```bash
-make docker-logs
+make docker-dev-logs
 ```
 
 ---
@@ -185,7 +205,7 @@ Typical day-to-day flow:
 ```bash
 make docker-dev-up
 make docker-migrate-up   # only when schema changes
-make docker-logs         # when you want to watch runtime output
+make docker-dev-logs         # when you want to watch runtime output
 make docker-test         # before opening PR / merging
 ```
 
@@ -194,7 +214,7 @@ Optional shared quality checks:
 ```bash
 make docker-fmt
 make docker-lint
-make docker-test-e2e
+make test-e2e
 ```
 
 ---
@@ -239,7 +259,7 @@ The repo also supports host-side tests, but for mixed-OS teams this is a nice sh
 
 ```bash
 make docker-test
-make docker-test-e2e
+make test-e2e
 ```
 
 ---

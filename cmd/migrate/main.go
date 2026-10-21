@@ -12,10 +12,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
+	cfg := config.LoadPostgres()
 
 	command := "up"
 	if len(os.Args) > 1 {
