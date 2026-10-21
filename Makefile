@@ -3,8 +3,9 @@ COMPOSE_FILE ?= deployments/compose/docker-compose.yml
 DEV_COMPOSE_FILE ?= deployments/compose/docker-compose.dev.yml
 DOCKER_GO_IMAGE ?= golang:1.25
 DOCKER_WORKDIR ?= /app
+TEST_ENV_FILE ?= .env.test
 
-.PHONY: run worker seed migrate-up migrate-down build fmt fmt-check tidy test test-e2e lint install-hooks swagger docker-swagger docker-up docker-dev-up docker-dev-down docker-dev-reset docker-down docker-logs docker-ps docker-migrate-up docker-migrate-down docker-build docker-test docker-test-e2e docker-fmt docker-lint docker-seed
+.PHONY: run worker seed migrate-up migrate-down build fmt fmt-check tidy test test-e2e test-integration test-runtime check verify lint install-hooks swagger docker-swagger docker-up docker-dev-up docker-dev-down docker-dev-reset docker-down docker-logs docker-ps docker-migrate-up docker-migrate-down docker-build docker-test docker-test-e2e docker-fmt docker-lint docker-seed
 
 run:
 	$(GO) run ./cmd/api
@@ -36,10 +37,22 @@ tidy:
 	$(GO) mod tidy
 
 test:
-	$(GO) test ./...
+	$(GO) test -v ./...
 
 test-e2e:
-	$(GO) test ./tests/e2e -count=1
+	$(GO) test -v ./tests/e2e -count=1
+
+check: fmt-check lint test
+	$(GO) vet ./...
+	git diff --check
+
+test-integration:
+	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/test-integration.sh
+
+test-runtime:
+	TEST_ENV_FILE="$(TEST_ENV_FILE)" ./scripts/test-runtime.sh
+
+verify: check test-integration test-runtime
 
 lint:
 	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,12 +25,23 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func TestAuthRegisterLoginThenMe(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := gorm.Open(sqlite.Open("file:auth-e2e?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file:auth-e2e?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			logger.Config{
+				SlowThreshold:             200 * time.Millisecond,
+				LogLevel:                  logger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  false,
+			},
+		),
+	})
 	if err != nil {
 		t.Fatalf("open sqlite database: %v", err)
 	}

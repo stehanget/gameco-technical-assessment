@@ -2,6 +2,7 @@ package seeds
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -19,6 +20,12 @@ type Runner struct {
 
 type Report struct {
 	Seeders []string
+	Results []Result
+}
+
+type Result struct {
+	Name     string
+	Duration time.Duration
 }
 
 func NewRunner(db *gorm.DB) *Runner {
@@ -29,10 +36,15 @@ func (r *Runner) Run() (Report, error) {
 	report := Report{}
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		for _, seeder := range r.seeders {
+			startedAt := time.Now()
 			if err := seeder.Seed(tx); err != nil {
 				return fmt.Errorf("%s: %w", seeder.Name(), err)
 			}
 			report.Seeders = append(report.Seeders, seeder.Name())
+			report.Results = append(report.Results, Result{
+				Name:     seeder.Name(),
+				Duration: time.Since(startedAt),
+			})
 		}
 		return nil
 	})

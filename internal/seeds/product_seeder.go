@@ -119,11 +119,11 @@ func (s ProductSeeder) Seed(db *gorm.DB) error {
 		}
 
 		var product modulecatalog.Product
-		result := db.Unscoped().Where("seller_id = ? AND name = ?", seller.ID, record.Name).First(&product)
-		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Unscoped().Where("seller_id = ? AND name = ?", seller.ID, record.Name).Find(&product)
+		if result.Error != nil {
 			return result.Error
 		}
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		if result.RowsAffected == 0 {
 			publicID, err := identifier.NewPublicID()
 			if err != nil {
 				return err

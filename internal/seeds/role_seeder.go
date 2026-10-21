@@ -1,8 +1,6 @@
 package seeds
 
 import (
-	"errors"
-
 	"gameco-technical-assessment/internal/constants/role"
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
 
@@ -29,11 +27,11 @@ func (RoleSeeder) Name() string { return "roles" }
 func (s RoleSeeder) Seed(db *gorm.DB) error {
 	for _, record := range roleSeedRecords {
 		var role moduleauth.Role
-		result := db.Where("code = ?", record.Code).First(&role)
-		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Where("code = ?", record.Code).Find(&role)
+		if result.Error != nil {
 			return result.Error
 		}
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		if result.RowsAffected == 0 {
 			if err := db.Create(&moduleauth.Role{Code: record.Code, Name: record.Name, Description: record.Description}).Error; err != nil {
 				return err
 			}

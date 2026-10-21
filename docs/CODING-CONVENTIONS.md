@@ -16,7 +16,7 @@ go vet ./...
 git diff --check
 ```
 
-The optional pre-commit hook runs `make fmt-check`, `make lint`, and `make test`. Generated Swagger must be regenerated whenever route annotations or API DTO contracts change:
+The optional pre-commit hook runs `make check` (format check, lint, verbose tests, vet, and diff check). Generated Swagger must be regenerated whenever route annotations or API DTO contracts change:
 
 ```text
 make swagger

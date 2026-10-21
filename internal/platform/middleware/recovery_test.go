@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,9 @@ import (
 
 func TestRecoveryLogsPanicAndStackWithoutLeakingSensitiveValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	previousErrorWriter := gin.DefaultErrorWriter
+	gin.DefaultErrorWriter = io.Discard
+	t.Cleanup(func() { gin.DefaultErrorWriter = previousErrorWriter })
 	var output bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
 

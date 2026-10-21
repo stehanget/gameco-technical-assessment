@@ -1,7 +1,6 @@
 package seeds
 
 import (
-	"errors"
 	"strings"
 
 	moduleauth "gameco-technical-assessment/internal/modules/auth"
@@ -34,11 +33,11 @@ func (s UserSeeder) Seed(db *gorm.DB) error {
 		}
 
 		var user moduleauth.User
-		result := db.Where("LOWER(email) = ?", email).First(&user)
-		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Where("LOWER(email) = ?", email).Find(&user)
+		if result.Error != nil {
 			return result.Error
 		}
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		if result.RowsAffected == 0 {
 			publicID, err := identifier.NewPublicID()
 			if err != nil {
 				return err

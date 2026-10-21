@@ -75,6 +75,14 @@ If you want the least platform friction, use Docker for:
 cp .env.example .env
 ```
 
+For PostgreSQL/Redis integration and runtime tests, create the ignored test environment file:
+
+```bash
+cp .env.test.example .env.test
+```
+
+`.env.test` is local-only and must not be committed.
+
 ### 2. Start full dev stack with live reload
 
 ```bash
@@ -143,6 +151,9 @@ make lint
 make build
 make test
 make test-e2e
+make test-integration
+make test-runtime
+make verify
 make swagger
 make install-hooks
 ```
@@ -193,7 +204,10 @@ internal/
   workers/                   # background jobs and queue processing
 migrations/                  # Goose SQL migrations
 tests/
-  e2e/                       # cross-module HTTP end-to-end tests
+  e2e/                       # fast SQLite + miniredis HTTP tests
+  integration/               # real PostgreSQL/Redis in-process HTTP tests
+  runtime/                   # real API binary black-box HTTP tests
+  support/                   # shared real-dependency test harness
 deployments/
   compose/                   # production/development Compose files
   docker/                    # API, worker, migrate, and dev Dockerfiles

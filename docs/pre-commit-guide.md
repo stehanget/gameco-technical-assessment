@@ -15,9 +15,17 @@ The repo includes a Git pre-commit hook at:
 When installed, it runs before every commit:
 
 ```bash
-make fmt-check
-make lint
-make test
+make check
+```
+
+`make check` runs:
+
+```text
+fmt-check
+lint
+go test -v ./...
+go vet ./...
+git diff --check
 ```
 
 If any step fails, the commit is blocked.
@@ -73,11 +81,13 @@ When you run:
 git commit -m "your message"
 ```
 
-The hook runs:
+The hook runs `make check`, which executes:
 
 1. `make fmt-check`
 2. `make lint`
 3. `make test`
+4. `go vet ./...`
+5. `git diff --check`
 
 If all pass, the commit continues.
 If any fail, the commit stops and you fix the issue first.

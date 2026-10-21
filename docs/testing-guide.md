@@ -44,21 +44,85 @@ These tests are very valuable because they exercise real HTTP flow when present.
 
 ## 3. Current test infrastructure
 
-The router e2e tests currently use:
-- SQLite in-memory
-- miniredis
-- `httptest`
+The repository intentionally uses four test layers.
 
-That means the tests are not just mocks.
-They actually hit:
-- route
-- middleware
-- handler
-- service
-- repository
-- DB/Redis
+### Fast package and unit tests
 
-That is why they are useful.
+Good for deterministic logic, helpers, middleware, services, and small rules.
+
+```bash
+make test
+```
+
+`make test` runs `go test -v ./...` and shows individual test names.
+
+### SQLite HTTP E2E tests
+
+Located under:
+
+```text
+tests/e2e/
+```
+
+These use:
+
+- SQLite in-memory;
+- miniredis;
+- `httptest`;
+- the real router, middleware, handlers, services, and repositories.
+
+They are fast in-process HTTP tests. They are useful for route and contract coverage, but they are **not PostgreSQL compatibility proof**.
+
+### PostgreSQL/Redis integration tests
+
+Located under:
+
+```text
+tests/integration/
+```
+
+These start PostgreSQL 18.6 and Redis with the test Compose stack, apply the official migrations and seeders, then use an in-process `httptest.Server` backed by the real PostgreSQL and Redis instances.
+
+They are intended to catch:
+
+- PostgreSQL SQL/schema incompatibilities;
+- enum, FK, index, and constraint behavior;
+- GORM/PostgreSQL differences;
+- real Redis integration;
+- HTTP behavior against real dependencies.
+
+Run them with:
+
+```bash
+make test-integration
+```
+
+### Runtime tests
+
+Located under:
+
+```text
+tests/runtime/
+```
+
+These start the real PostgreSQL/Redis stack, run migration and seed, build `cmd/api` as a binary, start it as an OS process, wait for `/health`, and execute black-box HTTP tests over TCP.
+
+They validate the process/deployment boundary:
+
+- API binary startup;
+- environment/config wiring;
+- port binding;
+- dependency connectivity;
+- real HTTP process behavior;
+- cleanup and lifecycle handling.
+
+Run them with:
+
+```bash
+make test-runtime
+```
+
+`/health` is only the readiness gate. The actual endpoint assertions live in Go tests under `tests/runtime/`.
 
 ---
 
@@ -91,26 +155,53 @@ Use `make lint` before PR/merge.
 
 ## 5. Common commands
 
-### Run all tests
+### Run all fast tests
 
 ```bash
 make test
 ```
 
-### Run focused e2e tests
+### Run SQLite HTTP E2E tests
 
 ```bash
 make test-e2e
 ```
 
-### Run full verification
+### Run PostgreSQL/Redis integration tests
+
+Create a local test environment once per clone:
 
 ```bash
-make fmt
-make lint
-make build
-make test
+cp .env.test.example .env.test
 ```
+
+`.env.test` is ignored and must not be committed.
+
+```bash
+make test-integration
+```
+
+### Run real API runtime tests
+
+```bash
+make test-runtime
+```
+
+### Run the complete verification suite
+
+```bash
+make verify
+```
+
+`make verify` runs:
+
+```text
+make check
+make test-integration
+make test-runtime
+```
+
+`make check` covers formatting, lint, verbose package tests, vet, and `git diff --check`. The integration and runtime layers are intentionally separate because they require PostgreSQL/Redis and a real API process.
 
 ### Run one Go package
 
@@ -169,10 +260,7 @@ Suggested commands:
 
 ```bash
 go test ./internal/app -run TestSomething -count=1
-make fmt
-make lint
-make build
-make test
+make verify
 ```
 
 ---
@@ -237,10 +325,7 @@ That gives both narrow and broad confidence.
 Before calling a feature complete, run:
 
 ```bash
-make fmt
-make lint
-make build
-make test
+make verify
 ```
 
 If you changed Swagger comments:

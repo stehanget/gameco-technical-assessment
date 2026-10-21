@@ -1,7 +1,6 @@
 package seeds
 
 import (
-	"errors"
 	"strings"
 
 	"gameco-technical-assessment/internal/constants/permission"
@@ -40,11 +39,11 @@ func (PermissionSeeder) Name() string       { return "permissions" }
 func (s PermissionSeeder) Seed(db *gorm.DB) error {
 	for _, record := range permissionSeedRecords {
 		var permission moduleauth.Permission
-		result := db.Where("code = ?", record.Code).First(&permission)
-		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Where("code = ?", record.Code).Find(&permission)
+		if result.Error != nil {
 			return result.Error
 		}
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		if result.RowsAffected == 0 {
 			if err := db.Create(&moduleauth.Permission{Code: record.Code, Description: record.Description}).Error; err != nil {
 				return err
 			}

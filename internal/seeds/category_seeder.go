@@ -1,8 +1,6 @@
 package seeds
 
 import (
-	"errors"
-
 	modulecatalog "gameco-technical-assessment/internal/modules/catalog"
 	"gameco-technical-assessment/internal/platform/identifier"
 
@@ -29,11 +27,11 @@ func (CategorySeeder) Name() string     { return "categories" }
 func (s CategorySeeder) Seed(db *gorm.DB) error {
 	for _, record := range categorySeedRecords {
 		var category modulecatalog.Category
-		result := db.Where("slug = ?", record.Slug).First(&category)
-		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result := db.Where("slug = ?", record.Slug).Find(&category)
+		if result.Error != nil {
 			return result.Error
 		}
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		if result.RowsAffected == 0 {
 			publicID, err := identifier.NewPublicID()
 			if err != nil {
 				return err

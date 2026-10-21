@@ -3,8 +3,6 @@ set -eu
 
 printf '%s
 ' 'Running pre-commit checks...'
-make fmt-check
-make lint
-make test
+make check
 printf '%s
 ' 'Pre-commit checks passed.'

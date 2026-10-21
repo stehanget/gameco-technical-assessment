@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"time"
 
 	"gameco-technical-assessment/internal/config"
 	"gameco-technical-assessment/internal/platform/database"
@@ -28,5 +28,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(report.Summary())
+	for _, result := range report.Results {
+		log.Printf("OK   %-24s (%.2fms)", result.Name, float64(result.Duration)/float64(time.Millisecond))
+	}
+	log.Printf("seed command \"run\" finished")
 }
