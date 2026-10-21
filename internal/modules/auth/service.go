@@ -137,9 +137,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 		return TokenResponse{}, err
 	}
 	_ = s.redis.Del(ctx, s.refreshSessionKey(refreshHash)).Err()
-	if err := s.redis.Set(ctx, s.refreshSessionKey(newRefreshHash), jti, s.config.RefreshTokenTTL).Err(); err != nil {
-		return TokenResponse{}, err
-	}
+	_ = s.redis.Set(ctx, s.refreshSessionKey(newRefreshHash), jti, s.config.RefreshTokenTTL).Err()
 	return TokenResponse{AccessToken: accessToken, RefreshToken: newRefreshToken, TokenType: "Bearer", ExpiresIn: int64(s.config.AccessTokenTTL.Seconds()), User: mapUser(user, access)}, nil
 }
 
@@ -171,7 +169,7 @@ func (s *Service) ValidateSession(ctx context.Context, jti string) (Access, erro
 	if err != nil {
 		return Access{}, err
 	}
-	return Access{Roles: session.Roles, Permissions: session.Permissions}, nil
+	return Access{UserID: session.UserID, Roles: session.Roles, Permissions: session.Permissions}, nil
 }
 
 func (s *Service) issueTokenPair(ctx context.Context, user User, metadata SessionMetadata) (TokenResponse, error) {
@@ -204,9 +202,7 @@ func (s *Service) issueTokenPair(ctx context.Context, user User, metadata Sessio
 	}); err != nil {
 		return TokenResponse{}, err
 	}
-	if err := s.redis.Set(ctx, s.refreshSessionKey(refreshHash), jti, s.config.RefreshTokenTTL).Err(); err != nil {
-		return TokenResponse{}, err
-	}
+	_ = s.redis.Set(ctx, s.refreshSessionKey(refreshHash), jti, s.config.RefreshTokenTTL).Err()
 	return TokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, TokenType: "Bearer", ExpiresIn: int64(s.config.AccessTokenTTL.Seconds()), User: mapUser(user, access)}, nil
 }
 

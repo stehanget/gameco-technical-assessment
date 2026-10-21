@@ -8,14 +8,12 @@ type RateLimitPolicyConfig struct {
 }
 
 type RateLimitConfig struct {
-	Enabled       bool
 	Anonymous     RateLimitPolicyConfig
 	Authenticated RateLimitPolicyConfig
 }
 
 func loadRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
-		Enabled: true,
 		// Anonymous traffic is more abuse-prone because it has no account-level identity.
 		// Keep the global IP budget conservative; sensitive public routes define tighter policies.
 		Anonymous: RateLimitPolicyConfig{

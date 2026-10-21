@@ -13,6 +13,7 @@ import (
 
 	catalogconstants "gameco-technical-assessment/internal/constants/catalog"
 	errorconst "gameco-technical-assessment/internal/constants/error"
+	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/identifier"
 	"gameco-technical-assessment/internal/platform/timestamp"
@@ -117,7 +118,8 @@ func (s *Service) FindByPublicID(ctx context.Context, publicID string) (ProductR
 	return mapProductView(row)
 }
 
-func (s *Service) ListBySeller(ctx context.Context, sellerID uint, request ListQuery) (sellerListResult, error) {
+func (s *Service) ListBySeller(ctx context.Context, actor platformauth.Actor, request ListQuery) (sellerListResult, error) {
+	sellerID := actor.UserID
 	params, cursor, err := normalizeListQuery(request)
 	if err != nil {
 		return sellerListResult{}, err
@@ -155,7 +157,8 @@ func (s *Service) ListBySeller(ctx context.Context, sellerID uint, request ListQ
 	return sellerListResult{Items: items, HasMore: hasMore, NextCursor: nextCursor, PerPage: params.PerPage}, nil
 }
 
-func (s *Service) FindSellerProductByPublicID(ctx context.Context, sellerID uint, publicID string) (SellerProductResponse, error) {
+func (s *Service) FindSellerProductByPublicID(ctx context.Context, actor platformauth.Actor, publicID string) (SellerProductResponse, error) {
+	sellerID := actor.UserID
 	parsed, err := uuid.Parse(publicID)
 	if err != nil {
 		return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
@@ -182,7 +185,8 @@ func (s *Service) CategoryOptions(ctx context.Context) ([]CategoryOptionResponse
 	return options, nil
 }
 
-func (s *Service) CreateProduct(ctx context.Context, sellerID uint, request CreateProductRequest) (SellerProductResponse, error) {
+func (s *Service) CreateProduct(ctx context.Context, actor platformauth.Actor, request CreateProductRequest) (SellerProductResponse, error) {
+	sellerID := actor.UserID
 	category, err := s.repository.FindCategoryByPublicID(ctx, request.CategoryPublicID.String())
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -204,10 +208,11 @@ func (s *Service) CreateProduct(ctx context.Context, sellerID uint, request Crea
 	if err := s.repository.CreateProduct(ctx, product); err != nil {
 		return SellerProductResponse{}, err
 	}
-	return s.FindSellerProductByPublicID(ctx, sellerID, publicID.String())
+	return s.FindSellerProductByPublicID(ctx, actor, publicID.String())
 }
 
-func (s *Service) UpdateProduct(ctx context.Context, sellerID uint, publicID string, request UpdateProductRequest) (SellerProductResponse, error) {
+func (s *Service) UpdateProduct(ctx context.Context, actor platformauth.Actor, publicID string, request UpdateProductRequest) (SellerProductResponse, error) {
+	sellerID := actor.UserID
 	parsed, err := uuid.Parse(publicID)
 	if err != nil {
 		return SellerProductResponse{}, faults.New(faults.KindNotFound, errorconst.CatalogProductNotFound, err)
@@ -262,7 +267,7 @@ func (s *Service) UpdateProduct(ctx context.Context, sellerID uint, publicID str
 		}
 		return SellerProductResponse{}, err
 	}
-	return s.FindSellerProductByPublicID(ctx, sellerID, parsed.String())
+	return s.FindSellerProductByPublicID(ctx, actor, parsed.String())
 }
 
 func normalizeListQuery(request ListQuery) (listParams, *cursorPosition, error) {

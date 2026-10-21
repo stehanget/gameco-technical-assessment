@@ -58,7 +58,7 @@ func Bootstrap(ctx context.Context) (*Container, error) {
 		DB:        db,
 		Redis:     redisClient,
 		Jobs:      jobEnqueuer,
-		JWTSigner: platformauth.NewJWTManagerWithClock(cfg.App.JWTSecret, timeSource, cfg.App.JWTPreviousSecrets...),
+		JWTSigner: platformauth.NewJWTManager(cfg.App.JWTSecret, cfg.App.JWTPreviousSecrets...),
 		Clock:     timeSource,
 	}, nil
 }

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"net/http"
-	"strconv"
 
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/platform/faults"
@@ -136,19 +135,17 @@ func (h *Handler) Logout(c *gin.Context) {
 // @Failure 404 {object} httpx.ErrorResponse
 // @Router /api/v1/auth/me [get]
 func (h *Handler) Me(c *gin.Context) {
-	claims, ok := middleware.ClaimsFromContext(c)
+	access, ok := middleware.ActorFromContext(c)
 	if !ok {
 		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
 		return
 	}
-
-	userID, err := strconv.ParseUint(claims.UserID, 10, 64)
-	if err != nil {
-		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, err))
+	if access.UserID == 0 {
+		httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
 		return
 	}
 
-	response, err := h.service.Me(c.Request.Context(), uint(userID))
+	response, err := h.service.Me(c.Request.Context(), access.UserID)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return

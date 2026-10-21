@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	platformauth "gameco-technical-assessment/internal/platform/auth"
+
 	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -92,8 +94,10 @@ func TestServiceSellerListAndDetailAreOwnerScoped(t *testing.T) {
 	db := newCatalogTestDB(t)
 	seedCatalogProducts(t, db)
 	service := NewService(NewRepository(db))
+	actor1 := platformauth.Actor{UserID: 1}
+	actor2 := platformauth.Actor{UserID: 2}
 
-	result, err := service.ListBySeller(context.Background(), 1, ListQuery{PerPage: 20})
+	result, err := service.ListBySeller(context.Background(), actor1, ListQuery{PerPage: 20})
 	if err != nil {
 		t.Fatalf("seller list: %v", err)
 	}
@@ -109,11 +113,11 @@ func TestServiceSellerListAndDetailAreOwnerScoped(t *testing.T) {
 		t.Fatal("seller response must expose product status")
 	}
 
-	otherSellerProducts, err := service.ListBySeller(context.Background(), 2, ListQuery{PerPage: 20})
+	otherSellerProducts, err := service.ListBySeller(context.Background(), actor2, ListQuery{PerPage: 20})
 	if err != nil || len(otherSellerProducts.Items) != 1 {
 		t.Fatalf("expected seller 2 product: result=%+v err=%v", otherSellerProducts, err)
 	}
-	if _, err := service.FindSellerProductByPublicID(context.Background(), 1, otherSellerProducts.Items[0].PublicID.String()); err == nil {
+	if _, err := service.FindSellerProductByPublicID(context.Background(), actor1, otherSellerProducts.Items[0].PublicID.String()); err == nil {
 		t.Fatal("expected cross-seller detail lookup to return not found")
 	}
 }
@@ -136,12 +140,14 @@ func TestServiceCreateAndUpdateProductAreSellerScoped(t *testing.T) {
 	db := newCatalogTestDB(t)
 	seedCatalogProducts(t, db)
 	service := NewService(NewRepository(db))
+	actor1 := platformauth.Actor{UserID: 1}
+	actor2 := platformauth.Actor{UserID: 2}
 	var category Category
 	if err := db.First(&category).Error; err != nil {
 		t.Fatalf("load category: %v", err)
 	}
 
-	created, err := service.CreateProduct(context.Background(), 1, CreateProductRequest{
+	created, err := service.CreateProduct(context.Background(), actor1, CreateProductRequest{
 		Name: "New Controller", Description: "Wireless controller", PriceAmount: 250,
 		StockQuantity: 8, CategoryPublicID: category.PublicID,
 	})
@@ -153,14 +159,14 @@ func TestServiceCreateAndUpdateProductAreSellerScoped(t *testing.T) {
 	}
 
 	newName := "Updated Controller"
-	updated, err := service.UpdateProduct(context.Background(), 1, created.PublicID.String(), UpdateProductRequest{Name: &newName})
+	updated, err := service.UpdateProduct(context.Background(), actor1, created.PublicID.String(), UpdateProductRequest{Name: &newName})
 	if err != nil {
 		t.Fatalf("update product: %v", err)
 	}
 	if updated.Name != newName {
 		t.Fatalf("expected updated name %q, got %q", newName, updated.Name)
 	}
-	if _, err := service.UpdateProduct(context.Background(), 2, created.PublicID.String(), UpdateProductRequest{Name: &newName}); err == nil {
+	if _, err := service.UpdateProduct(context.Background(), actor2, created.PublicID.String(), UpdateProductRequest{Name: &newName}); err == nil {
 		t.Fatal("expected foreign seller update to fail")
 	}
 }

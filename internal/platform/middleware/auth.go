@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	errorconst "gameco-technical-assessment/internal/constants/error"
@@ -14,17 +15,12 @@ import (
 
 const (
 	ClaimsKey = "claims"
-	AccessKey = "access"
+	ActorKey  = "actor"
 )
 
-type SessionResolver func(context.Context, string) ([]string, []string, error)
+type ActorResolver func(context.Context, string) (platformauth.Actor, error)
 
-type Access struct {
-	Roles       []string
-	Permissions []string
-}
-
-func Auth(jwtManager *platformauth.JWTManager, resolve SessionResolver) gin.HandlerFunc {
+func Auth(jwtManager *platformauth.JWTManager, resolve ActorResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
@@ -44,34 +40,39 @@ func Auth(jwtManager *platformauth.JWTManager, resolve SessionResolver) gin.Hand
 			c.Abort()
 			return
 		}
-		roles, permissions, err := resolve(c.Request.Context(), claims.TokenID)
+		actor, err := resolve(c.Request.Context(), claims.TokenID)
 		if err != nil {
 			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthSessionInvalid, err))
 			c.Abort()
 			return
 		}
+		if actor.UserID == 0 || claims.UserID != strconv.FormatUint(uint64(actor.UserID), 10) {
+			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
+			c.Abort()
+			return
+		}
 		c.Set(ClaimsKey, claims)
-		c.Set(AccessKey, Access{Roles: roles, Permissions: permissions})
+		c.Set(ActorKey, actor)
 		c.Next()
 	}
 }
 
 func RequirePermissions(required ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		value, ok := c.Get(AccessKey)
+		value, ok := c.Get(ActorKey)
 		if !ok {
 			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
 			c.Abort()
 			return
 		}
-		access, ok := value.(Access)
+		actor, ok := value.(platformauth.Actor)
 		if !ok {
 			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
 			c.Abort()
 			return
 		}
-		allowed := make(map[string]struct{}, len(access.Permissions))
-		for _, permission := range access.Permissions {
+		allowed := make(map[string]struct{}, len(actor.Permissions))
+		for _, permission := range actor.Permissions {
 			allowed[permission] = struct{}{}
 		}
 		for _, permission := range required {
@@ -87,20 +88,20 @@ func RequirePermissions(required ...string) gin.HandlerFunc {
 
 func RequireRoles(required ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		value, ok := c.Get(AccessKey)
+		value, ok := c.Get(ActorKey)
 		if !ok {
 			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil))
 			c.Abort()
 			return
 		}
-		access, ok := value.(Access)
+		actor, ok := value.(platformauth.Actor)
 		if !ok {
 			httpx.HandleError(c, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil))
 			c.Abort()
 			return
 		}
-		roles := make(map[string]struct{}, len(access.Roles))
-		for _, role := range access.Roles {
+		roles := make(map[string]struct{}, len(actor.Roles))
+		for _, role := range actor.Roles {
 			roles[role] = struct{}{}
 		}
 		for _, requiredRole := range required {
@@ -121,4 +122,13 @@ func ClaimsFromContext(c *gin.Context) (*platformauth.AccessTokenClaims, bool) {
 	}
 	value, ok := claims.(*platformauth.AccessTokenClaims)
 	return value, ok
+}
+
+func ActorFromContext(c *gin.Context) (platformauth.Actor, bool) {
+	value, ok := c.Get(ActorKey)
+	if !ok {
+		return platformauth.Actor{}, false
+	}
+	actor, ok := value.(platformauth.Actor)
+	return actor, ok
 }

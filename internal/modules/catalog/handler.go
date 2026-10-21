@@ -2,9 +2,9 @@ package catalog
 
 import (
 	"net/http"
-	"strconv"
 
 	errorconst "gameco-technical-assessment/internal/constants/error"
+	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/httpx"
 	"gameco-technical-assessment/internal/platform/middleware"
@@ -119,7 +119,7 @@ func (h *Handler) CategoryOptions(c *gin.Context) {
 // @Failure 500 {object} httpx.ErrorResponse
 // @Router /api/v1/seller/products [get]
 func (h *Handler) SellerList(c *gin.Context) {
-	sellerID, err := sellerIDFromContext(c)
+	actor, err := actorFromContext(c)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -129,7 +129,7 @@ func (h *Handler) SellerList(c *gin.Context) {
 		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
-	result, err := h.service.ListBySeller(c.Request.Context(), sellerID, request)
+	result, err := h.service.ListBySeller(c.Request.Context(), actor, request)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -162,12 +162,12 @@ func (h *Handler) SellerList(c *gin.Context) {
 // @Failure 500 {object} httpx.ErrorResponse
 // @Router /api/v1/seller/products/{product_public_id} [get]
 func (h *Handler) SellerDetail(c *gin.Context) {
-	sellerID, err := sellerIDFromContext(c)
+	actor, err := actorFromContext(c)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
 	}
-	response, err := h.service.FindSellerProductByPublicID(c.Request.Context(), sellerID, c.Param("product_public_id"))
+	response, err := h.service.FindSellerProductByPublicID(c.Request.Context(), actor, c.Param("product_public_id"))
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -189,7 +189,7 @@ func (h *Handler) SellerDetail(c *gin.Context) {
 // @Failure 500 {object} httpx.ErrorResponse
 // @Router /api/v1/seller/products [post]
 func (h *Handler) Create(c *gin.Context) {
-	sellerID, err := sellerIDFromContext(c)
+	actor, err := actorFromContext(c)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -199,7 +199,7 @@ func (h *Handler) Create(c *gin.Context) {
 		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
-	response, err := h.service.CreateProduct(c.Request.Context(), sellerID, request)
+	response, err := h.service.CreateProduct(c.Request.Context(), actor, request)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -223,7 +223,7 @@ func (h *Handler) Create(c *gin.Context) {
 // @Failure 500 {object} httpx.ErrorResponse
 // @Router /api/v1/seller/products/{product_public_id} [patch]
 func (h *Handler) Update(c *gin.Context) {
-	sellerID, err := sellerIDFromContext(c)
+	actor, err := actorFromContext(c)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -233,7 +233,7 @@ func (h *Handler) Update(c *gin.Context) {
 		httpx.HandleError(c, faults.New(faults.KindInvalidInput, errorconst.InvalidRequest, err))
 		return
 	}
-	response, err := h.service.UpdateProduct(c.Request.Context(), sellerID, c.Param("product_public_id"), request)
+	response, err := h.service.UpdateProduct(c.Request.Context(), actor, c.Param("product_public_id"), request)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -241,14 +241,13 @@ func (h *Handler) Update(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, response)
 }
 
-func sellerIDFromContext(c *gin.Context) (uint, error) {
-	claims, ok := middleware.ClaimsFromContext(c)
+func actorFromContext(c *gin.Context) (platformauth.Actor, error) {
+	actor, ok := middleware.ActorFromContext(c)
 	if !ok {
-		return 0, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil)
+		return platformauth.Actor{}, faults.New(faults.KindUnauthenticated, errorconst.AuthMissingContext, nil)
 	}
-	userID, err := strconv.ParseUint(claims.UserID, 10, 64)
-	if err != nil || userID == 0 {
-		return 0, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, err)
+	if actor.UserID == 0 {
+		return platformauth.Actor{}, faults.New(faults.KindUnauthenticated, errorconst.AuthInvalidContext, nil)
 	}
-	return uint(userID), nil
+	return actor, nil
 }

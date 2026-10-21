@@ -11,8 +11,8 @@ func (c Config) Validate() error {
 		return fmt.Errorf("APP_PORT is required")
 	}
 
-	if c.App.JWTSecret == "" {
-		return fmt.Errorf("APP_JWT_SECRET is required")
+	if c.App.JWTSecret == "" || c.App.JWTSecret == "change-me" {
+		return fmt.Errorf("APP_JWT_SECRET must be explicitly configured")
 	}
 
 	if c.App.AccessTokenTTL <= 0 {
@@ -31,13 +31,11 @@ func (c Config) Validate() error {
 		return fmt.Errorf("REDIS_ADDR is required")
 	}
 
-	if c.RateLimit.Enabled {
-		if c.RateLimit.Anonymous.Limit <= 0 || c.RateLimit.Anonymous.Window <= 0 {
-			return fmt.Errorf("anonymous rate limit limit and window must be greater than zero")
-		}
-		if c.RateLimit.Authenticated.Limit <= 0 || c.RateLimit.Authenticated.Window <= 0 {
-			return fmt.Errorf("authenticated rate limit limit and window must be greater than zero")
-		}
+	if c.RateLimit.Anonymous.Limit <= 0 || c.RateLimit.Anonymous.Window <= 0 {
+		return fmt.Errorf("anonymous rate limit limit and window must be greater than zero")
+	}
+	if c.RateLimit.Authenticated.Limit <= 0 || c.RateLimit.Authenticated.Window <= 0 {
+		return fmt.Errorf("authenticated rate limit limit and window must be greater than zero")
 	}
 
 	return nil

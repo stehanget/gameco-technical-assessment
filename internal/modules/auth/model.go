@@ -73,6 +73,7 @@ type AuthSession struct {
 func (AuthSession) TableName() string { return "auth_sessions" }
 
 type Access struct {
+	UserID      uint
 	Roles       []string
 	Permissions []string
 }

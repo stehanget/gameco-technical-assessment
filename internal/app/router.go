@@ -25,16 +25,19 @@ func NewRouter(container *Container) *gin.Engine {
 	router.Use(middleware.CORS())
 	router.Use(middleware.Recovery(container.Logger))
 	router.Use(middleware.Logging(container.Logger))
-	swaggerUI := ginSwagger.WrapHandler(
-		swaggerFiles.Handler,
-		ginSwagger.DocExpansion("none"),
-	)
-	router.GET("/swagger/*any", swaggerUI)
+
+	if container.Config.App.Env != "production" {
+		swaggerUI := ginSwagger.WrapHandler(
+			swaggerFiles.Handler,
+			ginSwagger.DocExpansion("none"),
+		)
+		router.GET("/swagger/*any", swaggerUI)
+	}
 
 	modulehealth.RegisterRoutes(router, modulehealth.NewHandler())
 
 	api := router.Group("/api/v1")
-	api.Use(middleware.RateLimitWithClock(container.Redis, middleware.RateLimitPolicySet{
+	api.Use(middleware.RateLimit(container.Redis, middleware.RateLimitPolicySet{
 		Anonymous: middleware.RateLimitPolicy{
 			Name:   "global-ip",
 			Limit:  container.Config.RateLimit.Anonymous.Limit,
@@ -45,20 +48,21 @@ func NewRouter(container *Container) *gin.Engine {
 			Limit:  container.Config.RateLimit.Authenticated.Limit,
 			Window: container.Config.RateLimit.Authenticated.Window,
 		},
-	}, container.JWTSigner, container.Clock))
+	}, container.JWTSigner))
 
-	resolveAccess := moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
-		DB:        container.DB,
+	authRepository := moduleauth.NewRepository(container.DB, container.Redis)
+	authService := moduleauth.NewService(authRepository, container.Redis, container.JWTSigner, container.Config.App)
+	actorResolver := moduleauth.NewActorResolver(authService)
+
+	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
+		Service:   authService,
 		Redis:     container.Redis,
 		JWTSigner: container.JWTSigner,
-		AppConfig: container.Config.App,
-		RateLimit: container.Config.RateLimit,
-		Clock:     container.Clock,
 	})
 	modulecatalog.RegisterRoutes(api, modulecatalog.RouteDependencies{
-		DB:            container.DB,
-		JWTSigner:     container.JWTSigner,
-		ResolveAccess: resolveAccess,
+		DB:           container.DB,
+		JWTSigner:    container.JWTSigner,
+		ResolveActor: actorResolver,
 	})
 
 	return router

@@ -60,7 +60,10 @@ func TestAuthRegisterLoginThenMe(t *testing.T) {
 				AccessTokenTTL:  15 * time.Minute,
 				RefreshTokenTTL: time.Hour,
 			},
-			RateLimit: config.RateLimitConfig{Enabled: false},
+			RateLimit: config.RateLimitConfig{
+				Anonymous:     config.RateLimitPolicyConfig{Limit: 1000, Window: time.Minute},
+				Authenticated: config.RateLimitPolicyConfig{Limit: 1000, Window: time.Minute},
+			},
 		},
 		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		DB:        db,

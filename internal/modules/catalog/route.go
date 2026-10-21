@@ -11,9 +11,9 @@ import (
 )
 
 type RouteDependencies struct {
-	DB            *gorm.DB
-	JWTSigner     *platformauth.JWTManager
-	ResolveAccess middleware.SessionResolver
+	DB           *gorm.DB
+	JWTSigner    *platformauth.JWTManager
+	ResolveActor middleware.ActorResolver
 }
 
 func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
@@ -28,7 +28,7 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	router.GET("/categories/options", handler.CategoryOptions)
 
 	seller := router.Group("/seller/products")
-	seller.Use(middleware.Auth(deps.JWTSigner, deps.ResolveAccess))
+	seller.Use(middleware.Auth(deps.JWTSigner, deps.ResolveActor))
 	seller.Use(middleware.RequireRoles(role.Seller))
 	seller.Use(middleware.RequirePermissions(permission.ProductRead))
 	seller.GET("", handler.SellerList)
