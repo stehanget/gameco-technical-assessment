@@ -49,14 +49,19 @@ The exact SQL shape may use `UPDATE ... WHERE stock_quantity >= $quantity RETURN
 
 ## Required verification
 
-- Concurrent checkout test for the last available unit.
-- Idempotency test with sequential retry.
-- Idempotency test with two identical requests arriving concurrently.
-- Rollback test proving a failed order does not leave a stock or ledger mutation.
+- Concurrent checkout test for the last available unit: covered by
+  `TestCheckoutConcurrencyAgainstPostgres`.
+- Idempotency test with sequential retry: covered by the existing checkout E2E
+  and PostgreSQL integration tests.
+- Idempotency test with two identical requests arriving concurrently: covered
+  by `TestCheckoutConcurrencyAgainstPostgres`.
+- Rollback test proving a failed order does not leave a stock or ledger
+  mutation, followed by a successful retry with the same key: covered by
+  `TestCheckoutConcurrencyAgainstPostgres`.
 
 ## Evidence/design references
 
 - `docs/schema.dbml`: `products`, `orders`, `order_items`, `checkout_idempotency_keys`, and `stock_movements`.
 - `docs/technical-assessment.md`: stock race-condition and checkout idempotency requirements.
 
-The initial marketplace checkout code is implemented in `internal/modules/checkout`. SQLite E2E, PostgreSQL integration, and real-binary runtime tests prove sequential checkout, idempotent replay, stock reservation, payment creation, and stock-ledger writes. A dedicated concurrent last-stock test and concurrent same-key retry test remain required before claiming full contention coverage.
+The initial marketplace checkout code is implemented in `internal/modules/checkout`. SQLite E2E, PostgreSQL integration, and real-binary runtime tests prove sequential checkout, idempotent replay, stock reservation, payment creation, and stock-ledger writes. `TestCheckoutConcurrencyAgainstPostgres` additionally proves last-stock contention, concurrent same-key replay, and rollback/retry behavior without duplicate order, payment, or stock-movement rows.
