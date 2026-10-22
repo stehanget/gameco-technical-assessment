@@ -291,9 +291,11 @@ scripts/                     # repository helper scripts
 - [Coding conventions](docs/CODING-CONVENTIONS.md) — cross-cutting rules for Go, API contracts, SQL, timestamps, security, migrations, and tests
 - [Identifier conventions](docs/identifier-conventions.md) — internal IDs, public UUIDv7 identifiers, JWT JTI, and refresh-token storage
 - [Database schema](docs/schema.dbml) — current PostgreSQL auth and marketplace schema
+- [Render the ERD](docs/schema-erd.md) — how to paste `docs/schema.dbml` into dbdiagram.io and read/export the diagram
 - [Threat model](docs/THREAT-MODEL.md) — OWASP API risks, attack scenarios, mitigations, and residual risks
 - [Security operations](docs/SECURITY-OPERATIONS.md) — secret rotation, audit events, anti-enumeration boundaries, and release security checks
 - [Architecture decisions](docs/ADR/README.md) — accepted session, data model, stock concurrency, rate-limit, and CORS decisions
+- [Runtime flow documentation](docs/flows/README.md) — Mermaid request flows for checkout, stock reservation, ledger writes, and transaction boundaries
 - [API signature guide](docs/api-signature-guide.md) — trusted server-to-server request signing, canonicalization, replay protection, and integration examples
 - [Assessment handoff](docs/assessment-handoff.md) — delivered scope, verification evidence, and operational follow-up
 - [Technical assessment](docs/technical-assessment.md) — original marketplace technical-assessment requirements
