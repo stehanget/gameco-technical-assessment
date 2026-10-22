@@ -23,6 +23,10 @@ func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 // @Description Lists active, non-deleted products with filtering, search, sorting, and cursor pagination
 // @Tags products
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Param q query string false "Case-insensitive search over product name and description"
 // @Param category query string false "Category slug"
 // @Param min_price query int false "Minimum price amount"
@@ -67,6 +71,10 @@ func (h *Handler) List(c *gin.Context) {
 // @Description Returns one active, non-deleted product by its UUIDv7 public identifier
 // @Tags products
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Param product_public_id path string true "Product public identifier" format(uuid)
 // @Success 200 {object} ItemResponse
 // @Failure 404 {object} httpx.ErrorResponse
@@ -86,6 +94,10 @@ func (h *Handler) Detail(c *gin.Context) {
 // @Description Lists canonical categories for public catalog filters and seller product forms
 // @Tags categories
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Success 200 {object} CategoryOptionsResponse
 // @Failure 500 {object} httpx.ErrorResponse
 // @Router /api/v1/categories/options [get]
@@ -103,6 +115,10 @@ func (h *Handler) CategoryOptions(c *gin.Context) {
 // @Description Lists non-deleted products owned by the authenticated seller
 // @Tags seller-products
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param q query string false "Case-insensitive search over product name and description"
 // @Param category query string false "Category slug"
@@ -153,6 +169,10 @@ func (h *Handler) SellerList(c *gin.Context) {
 // @Description Returns one non-deleted product owned by the authenticated seller
 // @Tags seller-products
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param product_public_id path string true "Product public identifier" format(uuid)
 // @Success 200 {object} SellerItemResponse
@@ -180,6 +200,10 @@ func (h *Handler) SellerDetail(c *gin.Context) {
 // @Tags seller-products
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param request body CreateProductRequest true "Product payload"
 // @Success 201 {object} SellerItemResponse
@@ -212,6 +236,10 @@ func (h *Handler) Create(c *gin.Context) {
 // @Tags seller-products
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param product_public_id path string true "Product public identifier" format(uuid)
 // @Param request body UpdateProductRequest true "Product fields"

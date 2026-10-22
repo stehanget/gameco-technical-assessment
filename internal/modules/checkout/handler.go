@@ -32,6 +32,10 @@ func NewHandler(service *Service, webhookSecret string, timeSource platformclock
 // @Description Creates one pending-payment order from the authenticated buyer's active cart. Retries with the same Idempotency-Key replay the original result.
 // @Tags checkout
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param Idempotency-Key header string true "Client-generated idempotency key"
 // @Success 201 {object} Response
@@ -60,6 +64,10 @@ func (h *Handler) Create(c *gin.Context) {
 // @Description Returns an order and its immutable item snapshots for the authenticated buyer. Orders owned by another buyer are not disclosed.
 // @Tags orders
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param order_public_id path string true "Order public identifier" format(uuid)
 // @Success 200 {object} Response

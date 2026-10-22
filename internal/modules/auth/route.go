@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"gameco-technical-assessment/internal/config"
 	"gameco-technical-assessment/internal/constants/permission"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/middleware"
@@ -13,12 +14,16 @@ import (
 )
 
 type RouteDependencies struct {
-	Service   *Service
-	Redis     *redis.Client
-	JWTSigner *platformauth.JWTManager
+	Service      *Service
+	Redis        *redis.Client
+	JWTSigner    *platformauth.JWTManager
+	APISignature config.APISignatureConfig
 }
 
-const authRateLimitPolicyName = "auth"
+const (
+	authRateLimitPolicyName              = "auth"
+	authRateLimitPolicyAuthenticatedName = "auth-authenticated"
+)
 
 func NewActorResolver(service *Service) middleware.ActorResolver {
 	resolve := func(ctx context.Context, jti string) (platformauth.Actor, error) {
@@ -43,7 +48,13 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 			Limit:  10,
 			Window: time.Minute,
 		},
+		Authenticated: middleware.RateLimitPolicy{
+			Name:   authRateLimitPolicyAuthenticatedName,
+			Limit:  60,
+			Window: time.Minute,
+		},
 	}, deps.JWTSigner))
+	public.Use(middleware.RequireAPISignature(deps.APISignature, deps.Redis))
 	public.POST("/register", handler.Register)
 	public.POST("/login", handler.Login)
 	public.POST("/refresh", handler.Refresh)
@@ -53,10 +64,11 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	protected.Use(middleware.Auth(deps.JWTSigner, resolveActor))
 	protected.Use(middleware.RateLimit(deps.Redis, middleware.RateLimitPolicySet{
 		Authenticated: middleware.RateLimitPolicy{
-			Name:   "authenticated-user",
+			Name:   authRateLimitPolicyAuthenticatedName,
 			Limit:  60,
 			Window: time.Minute,
 		},
 	}, deps.JWTSigner))
+	protected.Use(middleware.RequireAPISignature(deps.APISignature, deps.Redis))
 	protected.GET("/me", middleware.RequirePermissions(permission.AuthMe), handler.Me)
 }

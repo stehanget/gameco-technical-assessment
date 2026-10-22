@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
+	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var catalogProductColumns = []string{
@@ -33,12 +36,21 @@ func newCatalogTestDB(t *testing.T) (*gorm.DB, sqlmock.Sqlmock) {
 		_ = sqlDB.Close()
 	})
 
+	dbLogger := gormlogger.New(
+		log.New(os.Stderr, "\r\n", log.LstdFlags),
+		gormlogger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  gormlogger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		},
+	)
 	db, err := gorm.Open(postgres.New(postgres.Config{
 		Conn:                 sqlDB,
 		DriverName:           "postgres",
 		PreferSimpleProtocol: true,
 		WithoutReturning:     false,
-	}), &gorm.Config{})
+	}), &gorm.Config{Logger: dbLogger})
 	if err != nil {
 		t.Fatalf("open gorm mock database: %v", err)
 	}

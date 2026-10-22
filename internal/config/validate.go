@@ -19,6 +19,12 @@ func (c Config) Validate() error {
 		return fmt.Errorf("APP_PAYMENT_WEBHOOK_SECRET must be explicitly configured")
 	}
 
+	if c.App.APISignature.Enabled || c.App.APISignature.Version != "" || c.App.APISignature.RotationCount != 0 || c.App.APISignature.TimestampWindow != 0 || c.App.APISignature.NonceKeyPrefix != "" || c.App.APISignature.MaxSignedRequestBodyBytes != 0 || len(c.App.APISignature.Keys) != 0 {
+		if err := c.App.APISignature.Validate(); err != nil {
+			return err
+		}
+	}
+
 	if c.App.AccessTokenTTL <= 0 {
 		return fmt.Errorf("APP_ACCESS_TOKEN_TTL must be greater than zero")
 	}
@@ -41,14 +47,6 @@ func (c Config) Validate() error {
 
 	if c.Redis.Addr == "" {
 		return fmt.Errorf("REDIS_ADDR is required")
-	}
-
-	if c.RateLimit.Anonymous.Limit <= 0 || c.RateLimit.Anonymous.Window <= 0 {
-		return fmt.Errorf("anonymous rate limit limit and window must be greater than zero")
-	}
-
-	if c.RateLimit.Authenticated.Limit <= 0 || c.RateLimit.Authenticated.Window <= 0 {
-		return fmt.Errorf("authenticated rate limit limit and window must be greater than zero")
 	}
 
 	return nil

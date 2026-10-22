@@ -23,6 +23,10 @@ func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 // @Description Returns the authenticated buyer's active cart and current product prices.
 // @Tags cart
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Success 200 {object} Response
 // @Failure 401 {object} httpx.ErrorResponse
@@ -49,6 +53,10 @@ func (h *Handler) Get(c *gin.Context) {
 // @Tags cart
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param product_public_id path string true "Product public identifier" format(uuid)
 // @Param request body SetItemRequest true "Cart item quantity"
@@ -84,6 +92,10 @@ func (h *Handler) SetItem(c *gin.Context) {
 // @Description Removes a product from the authenticated buyer's active cart.
 // @Tags cart
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Param product_public_id path string true "Product public identifier" format(uuid)
 // @Success 200 {object} Response

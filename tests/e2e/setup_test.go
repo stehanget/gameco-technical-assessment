@@ -26,11 +26,19 @@ func newE2ERouter(t *testing.T) *gin.Engine {
 }
 
 func newE2ERouterWithDB(t *testing.T) (*gin.Engine, *gorm.DB) {
+	return newE2ERouterWithDBSignature(t, false)
+}
+
+func newE2ERouterWithDBSignature(t *testing.T, signatureEnabled bool) (*gin.Engine, *gorm.DB) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
 	cfg := testsupport.IntegrationConfig(t)
 	cfg.App.PaymentWebhookSecret = "test-payment-webhook-secret"
+	cfg.App.APISignature.Enabled = signatureEnabled
+	if signatureEnabled {
+		cfg.App.APISignature.Keys = map[string]string{"e2e-integration": "e2e-api-signing-secret"}
+	}
 	db := testsupport.OpenPostgres(t, cfg)
 	testsupport.AssertMigrationsApplied(t, db)
 	if err := db.Exec(`TRUNCATE TABLE

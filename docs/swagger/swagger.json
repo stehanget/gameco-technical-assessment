@@ -27,6 +27,30 @@
                 "summary": "Login",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Login payload",
                         "name": "request",
                         "in": "body",
@@ -73,6 +97,30 @@
                 "summary": "Logout",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Logout payload",
                         "name": "request",
                         "in": "body",
@@ -113,6 +161,32 @@
                     "auth"
                 ],
                 "summary": "Current user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -149,6 +223,30 @@
                 ],
                 "summary": "Refresh tokens",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "description": "Refresh payload",
                         "name": "request",
@@ -196,6 +294,30 @@
                 "summary": "Register user",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Register payload",
                         "name": "request",
                         "in": "body",
@@ -236,6 +358,32 @@
                     "cart"
                 ],
                 "summary": "Get active cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -283,6 +431,30 @@
                 ],
                 "summary": "Set cart item quantity",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "format": "uuid",
@@ -363,6 +535,30 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Product public identifier",
                         "name": "product_public_id",
@@ -414,6 +610,32 @@
                     "categories"
                 ],
                 "summary": "List category options",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -446,6 +668,30 @@
                 ],
                 "summary": "Checkout active cart",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Client-generated idempotency key",
@@ -628,6 +874,30 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Order public identifier",
                         "name": "order_public_id",
@@ -680,6 +950,30 @@
                 ],
                 "summary": "List public products",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Case-insensitive search over product name and description",
@@ -778,6 +1072,30 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Product public identifier",
                         "name": "product_public_id",
@@ -823,6 +1141,30 @@
                 ],
                 "summary": "List seller products",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Case-insensitive search over product name and description",
@@ -937,6 +1279,30 @@
                 "summary": "Create seller product",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Product payload",
                         "name": "request",
                         "in": "body",
@@ -998,6 +1364,30 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Product public identifier",
                         "name": "product_public_id",
@@ -1055,6 +1445,30 @@
                 ],
                 "summary": "Update seller product",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "format": "uuid",

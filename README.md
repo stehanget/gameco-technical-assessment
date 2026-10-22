@@ -180,8 +180,25 @@ make install-hooks
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/auth/me`
 
+### Catalog and seller products
+- `GET /api/v1/products`
+- `GET /api/v1/products/:product_public_id`
+- `GET /api/v1/categories/options`
+- `GET /api/v1/seller/products`
+- `GET /api/v1/seller/products/:product_public_id`
+- `POST /api/v1/seller/products`
+- `PATCH /api/v1/seller/products/:product_public_id`
+
+### Cart, checkout, and orders
+- `GET /api/v1/cart`
+- `PUT /api/v1/cart/items/:product_public_id`
+- `DELETE /api/v1/cart/items/:product_public_id`
+- `POST /api/v1/checkout`
+- `GET /api/v1/orders/:order_public_id`
+- `POST /api/v1/webhooks/payment`
+
 ### Health
-- `GET /api/v1/health`
+- `GET /health`
 
 The `internal/modules/example` package remains as reference scaffolding, but it is not registered in the application router.
 
@@ -201,6 +218,9 @@ internal/
     role/
   modules/                   # feature modules and route ownership
     auth/
+    catalog/                 # catalog reads and seller product management
+    cart/                    # buyer cart lifecycle
+    checkout/                # checkout, order detail, and payment webhook
     health/
     example/                 # reference scaffolding; not registered in routes
   platform/                  # infrastructure integrations
@@ -243,9 +263,10 @@ scripts/                     # repository helper scripts
 - [Testing guide](docs/testing-guide.md) — how to run and add tests in this repo
 - [Coding conventions](docs/CODING-CONVENTIONS.md) — cross-cutting rules for Go, API contracts, SQL, timestamps, security, migrations, and tests
 - [Identifier conventions](docs/identifier-conventions.md) — internal IDs, public UUIDv7 identifiers, JWT JTI, and refresh-token storage
-- [Database schema](docs/schema.dbml) — current auth schema and planned marketplace domain model
+- [Database schema](docs/schema.dbml) — current PostgreSQL auth and marketplace schema
 - [Threat model](docs/THREAT-MODEL.md) — OWASP API risks, attack scenarios, mitigations, and residual risks
 - [Architecture decisions](docs/ADR/README.md) — accepted session, data model, stock concurrency, rate-limit, and CORS decisions
+- [API signature guide](docs/api-signature-guide.md) — trusted server-to-server request signing, canonicalization, replay protection, and integration examples
 - [Assessment handoff](docs/assessment-handoff.md) — delivered scope, verification evidence, and operational follow-up
 - [Technical assessment](docs/technical-assessment.md) — original marketplace technical-assessment requirements
 

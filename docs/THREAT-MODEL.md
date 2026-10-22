@@ -48,9 +48,11 @@ The repository currently has implemented authentication, database-backed session
 | Session revocation | JWT `jti` is resolved against an active PostgreSQL session; a short-lived Redis cache is guarded by a revoke marker checked before positive cache entries | `internal/platform/middleware/auth.go`, `internal/modules/auth/repository.go`, `internal/modules/auth/service.go` |
 | Refresh-token storage | Only a hash is stored in `auth_sessions`; refresh rotation revokes the previous session | `internal/modules/auth/service.go`, `migrations/20260723120500_create_auth_sessions.sql` |
 | Authorization | Permission middleware defaults to deny when auth context is missing or malformed | `internal/platform/middleware/auth.go` |
-| Rate limiting | Redis Lua script performs atomic increment and expiry; global traffic selects either an IP bucket or a user bucket, and limits are shared across API instances | `internal/platform/middleware/rate_limit.go`, `internal/config/rate_limit.go`, `internal/app/router.go` |
+| Rate limiting | Redis Lua script performs atomic increment and expiry; route-scoped policies protect auth, catalog, cart, checkout/order, and payment webhook traffic without an implicit limiter on every route | `internal/platform/middleware/rate_limit.go`, `internal/modules/auth/route.go`, `internal/modules/catalog/route.go`, `internal/modules/cart/route.go`, `internal/modules/checkout/route.go` |
 | CORS | Explicit localhost allowlist; wildcard origins and credentials are disabled | `internal/config/cors.go`, `internal/app/cors_test.go` |
 | Request tracing | Request ID middleware exposes `X-Request-ID` | `internal/platform/middleware/request_id.go` |
+| API request signing | Route-scoped trusted-integration signature uses key ID, timestamp, nonce, rotating canonical field order, HMAC-SHA256, and Redis replay protection; it is not global | `internal/platform/middleware/api_signature.go`, `internal/platform/middleware/api_signature_test.go` |
+| Browser response headers | API responses set `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and a restrictive `Permissions-Policy` | `internal/platform/middleware/security_headers.go`, `internal/platform/middleware/security_headers_test.go` |
 | Schema integrity | Internal numeric IDs, unique public IDs, join-table keys, and declared foreign keys are documented/migrated | `migrations/`, `docs/schema.dbml` |
 | Regression coverage | Register → login → refresh rotation → `/auth/me`, including refresh-token reuse handling, is covered by a black-box E2E test | `tests/e2e/auth_test.go` |
 | Error responses | Shared error envelope, definition-based typed errors containing code/kind/message, status-based safe mapper, request ID propagation, structured logging, panic recovery, and handler migration away from raw error responses | `internal/platform/httpx/response.go`, `internal/platform/httpx/error_test.go`, `internal/platform/faults/error.go`, `internal/constants/error/definitions.go`, `internal/platform/middleware/request_id.go`, `internal/platform/middleware/logging.go`, `internal/platform/middleware/recovery.go`, `docs/ADR/0005-centralized-error-handling.md` |
@@ -87,7 +89,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** Redis-backed shared rate limiting, request body limits, bounded query filters, cursor page-size limits, indexed catalog search, timeout-aware external calls, and endpoint-specific policies.
 
-**Current status:** Global IP and authenticated-user rate limiting, plus auth-module policies, are implemented through the shared `middleware.RateLimit` middleware. Public catalog query bounds, opaque cursors, allow-listed sorting, PostgreSQL trigram search indexes, and a 64 KiB payment-webhook body limit are implemented. Dedicated checkout/payment/webhook rate-limit policies and payment-provider circuit breaking remain future hardening work.
+**Current status:** The shared `middleware.RateLimit` middleware is applied explicitly at route scope: auth routes retain a dedicated policy, payment webhooks retain a high-capacity dedicated policy, and catalog, cart, and buyer checkout/order routes opt into shared global anonymous/authenticated policies at 60 requests per minute for anonymous traffic and 120 requests per minute for authenticated traffic. There is no implicit limiter on routes that have not opted in. Public catalog query bounds, opaque cursors, allow-listed sorting, PostgreSQL trigram search indexes, and a 64 KiB payment-webhook body limit are implemented. Dedicated payment-provider circuit breaking remains future hardening work.
 
 ### Public catalog query safety
 
@@ -125,7 +127,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Risk:** Wildcard CORS, leaked secrets, verbose errors, unsafe Swagger exposure, or incorrect production defaults.
 
-**Mitigations:** Explicit CORS allowlist, credentials disabled, environment-based configuration, recovery middleware, generated Swagger, and `.env.example` without real secrets.
+**Mitigations:** Explicit CORS allowlist, credentials disabled, browser response security headers, environment-based configuration, recovery middleware, generated Swagger, and `.env.example` without real secrets.
 
 **Residual risk:** Swagger is disabled in `production`. Production Compose still requires a deliberate manual hardening pass before deployment: explicit credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
 
@@ -214,10 +216,10 @@ The repository currently has implemented authentication, database-backed session
 ## What is not safe yet
 
 1. Cart lifecycle, cart ownership, current-stock validation, self-purchase prevention, checkout idempotency, order/payment creation, stock reservation, stock-ledger writes, signed payment webhook processing, expiry-triggered cancellation/stock restoration, retention cleanup, and checkout/payment HTTP/integration/runtime coverage are implemented. Payment expiry scheduling/retry, buyer order listing, and audit-event producers remain future scope.
-2. `user_login_security_states` is wired into login failure tracking, five-attempt lockout, reset-after-success behavior, and PostgreSQL/integration/runtime coverage.
+2. `user_login_security_states` is wired into login failure tracking, five-attempt lockout, reset-after-success behavior, and PostgreSQL/integration/runtime coverage. MFA, manual unlock/audit workflow, and device/session management remain future hardening scope.
 3. JWT key rotation is implemented through `APP_JWT_SECRET` plus a bounded `APP_JWT_PREVIOUS_SECRETS` verification list; secret-manager integration and automated rotation orchestration are not implemented.
 4. Production Compose still requires a manual hardening pass in `deployments/compose/docker-compose.yml`: explicit deployment credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
-5. The current rate limiter uses global anonymous-IP and authenticated-user policies; additional business-flow policies remain to be designed for payment and webhook endpoints, while checkout currently relies on the shared authenticated-user policy.
+5. Rate limiting is route-scoped: auth uses dedicated policies, payment webhooks use a dedicated high-capacity policy, and opted-in catalog, cart, and checkout/order routes share the global anonymous-IP and authenticated-user policies. Routes that do not opt in remain dependent on gateway/WAF controls or future module-owned policies.
 6. Registration/login still need a dedicated anti-enumeration and timing-hardening review; lockout and generic invalid-credentials responses are implemented.
 7. Error response foundations, definition-based error metadata, marketplace catalog errors, and cart-specific errors exist; stable domain codes and field-level validation details need to expand with the future transaction handlers.
 

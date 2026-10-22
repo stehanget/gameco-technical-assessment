@@ -24,6 +24,7 @@ func NewRouter(container *Container) *gin.Engine {
 		panic(err)
 	}
 	router.Use(middleware.RequestID())
+	router.Use(middleware.SecurityHeaders())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Recovery(container.Logger))
 	router.Use(middleware.Logging(container.Logger))
@@ -39,42 +40,37 @@ func NewRouter(container *Container) *gin.Engine {
 	modulehealth.RegisterRoutes(router, modulehealth.NewHandler())
 
 	api := router.Group("/api/v1")
-	api.Use(middleware.RateLimit(container.Redis, middleware.RateLimitPolicySet{
-		Anonymous: middleware.RateLimitPolicy{
-			Name:   "global-ip",
-			Limit:  container.Config.RateLimit.Anonymous.Limit,
-			Window: container.Config.RateLimit.Anonymous.Window,
-		},
-		Authenticated: middleware.RateLimitPolicy{
-			Name:   "global-user",
-			Limit:  container.Config.RateLimit.Authenticated.Limit,
-			Window: container.Config.RateLimit.Authenticated.Window,
-		},
-	}, container.JWTSigner))
 
 	authRepository := moduleauth.NewRepository(container.DB, container.Redis)
 	authService := moduleauth.NewService(authRepository, container.Redis, container.JWTSigner, container.Config.App)
 	actorResolver := moduleauth.NewActorResolver(authService)
 
 	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
-		Service:   authService,
-		Redis:     container.Redis,
-		JWTSigner: container.JWTSigner,
+		Service:      authService,
+		Redis:        container.Redis,
+		JWTSigner:    container.JWTSigner,
+		APISignature: container.Config.App.APISignature,
 	})
 	modulecart.RegisterRoutes(api, modulecart.RouteDependencies{
 		DB:           container.DB,
+		Redis:        container.Redis,
 		JWTSigner:    container.JWTSigner,
 		ResolveActor: actorResolver,
+		APISignature: container.Config.App.APISignature,
 	})
 	modulecatalog.RegisterRoutes(api, modulecatalog.RouteDependencies{
 		DB:           container.DB,
+		Redis:        container.Redis,
 		JWTSigner:    container.JWTSigner,
 		ResolveActor: actorResolver,
+		APISignature: container.Config.App.APISignature,
 	})
 	modulecheckout.RegisterRoutes(api, modulecheckout.RouteDependencies{
 		DB:                   container.DB,
+		Redis:                container.Redis,
 		JWTSigner:            container.JWTSigner,
 		ResolveActor:         actorResolver,
+		APISignature:         container.Config.App.APISignature,
 		PaymentWebhookSecret: container.Config.App.PaymentWebhookSecret,
 		Clock:                container.Clock,
 	})

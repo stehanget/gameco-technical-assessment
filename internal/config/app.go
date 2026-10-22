@@ -18,6 +18,7 @@ type AppConfig struct {
 	JWTSecret                          string
 	JWTPreviousSecrets                 []string
 	PaymentWebhookSecret               string
+	APISignature                       APISignatureConfig
 	PaymentWebhookEventRetention       time.Duration
 	PaymentWebhookCleanupInterval      time.Duration
 	CheckoutIdempotencyRetention       time.Duration
@@ -74,6 +75,10 @@ func loadAppConfig() (AppConfig, error) {
 	if err != nil {
 		return AppConfig{}, err
 	}
+	apiSignature, err := loadAPISignatureConfig()
+	if err != nil {
+		return AppConfig{}, err
+	}
 
 	return AppConfig{
 		Name:                               getEnv("APP_NAME", "gameco-technical-assessment"),
@@ -85,6 +90,7 @@ func loadAppConfig() (AppConfig, error) {
 		JWTSecret:                          jwtSecret,
 		JWTPreviousSecrets:                 previousSecrets,
 		PaymentWebhookSecret:               getEnv("APP_PAYMENT_WEBHOOK_SECRET", ""),
+		APISignature:                       apiSignature,
 		PaymentWebhookEventRetention:       webhookRetention,
 		PaymentWebhookCleanupInterval:      webhookCleanupInterval,
 		CheckoutIdempotencyRetention:       checkoutIdempotencyRetention,
@@ -124,4 +130,32 @@ func loadJWTSecrets() (string, []string, error) {
 		previous = append(previous, secret)
 	}
 	return current, previous, nil
+}
+
+func loadAPISigningKeys() (map[string]string, error) {
+	configured := strings.TrimSpace(getEnv("APP_API_SIGNING_KEYS", ""))
+	keys := make(map[string]string)
+	if configured == "" {
+		return keys, nil
+	}
+
+	for _, entry := range strings.Split(configured, ",") {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("APP_API_SIGNING_KEYS entries must use key-id:secret")
+		}
+		keyID := strings.TrimSpace(parts[0])
+		secret := strings.TrimSpace(parts[1])
+		if keyID == "" || secret == "" {
+			return nil, fmt.Errorf("APP_API_SIGNING_KEYS entries must have non-empty key ID and secret")
+		}
+		if strings.ContainsAny(keyID, "|,\n\r") {
+			return nil, fmt.Errorf("APP_API_SIGNING_KEYS key IDs contain invalid characters")
+		}
+		if _, exists := keys[keyID]; exists {
+			return nil, fmt.Errorf("APP_API_SIGNING_KEYS contains duplicate key ID %q", keyID)
+		}
+		keys[keyID] = secret
+	}
+	return keys, nil
 }

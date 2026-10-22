@@ -3,9 +3,8 @@
 ## Repository status
 
 - Branch: `main`
-- Remote: `origin/main`
-- Current delivered commit: `d08ac5613caefc2ec353acff8c8e3ca4f9c545b9`
-- Working tree was clean after the push.
+- Baseline commit before the current uncommitted work: `245fb3b7a7215077f9ed617c85a12f95fa1d215a`
+- Working tree: contains uncommitted implementation, generated Swagger, test, and documentation changes; it is not clean.
 - No secrets, credentials, tokens, or connection strings are included in this handoff.
 
 ## Delivered scope
@@ -18,8 +17,9 @@
 - Actor and permission-aware authorization.
 - Seller ownership predicates on catalog mutations and reads.
 - Login failure lockout.
-- Redis-backed rate limiting with always-on policies.
+- Redis-backed rate limiting: auth and payment webhooks use dedicated policies, while opted-in catalog, cart, and checkout/order routes share global anonymous/authenticated policies.
 - CORS restricted to the configured localhost allowlist with credentials disabled.
+- API response security headers: `nosniff`, frame denial, strict referrer policy, and disabled camera/microphone/geolocation permissions.
 
 ### Catalog, cart, and checkout
 
@@ -49,9 +49,21 @@
 - Checkout locking is unconditional; no database-dialect branch remains.
 - Migration loading requires PostgreSQL configuration only and does not require application secrets.
 
+### API request signing
+
+- API request signing is a separate mechanism from payment webhook signing.
+- Payment webhook headers and signing behavior remain unchanged.
+- Trusted integration requests can opt into `middleware.RequireAPISignature(...)` at route/group scope; current auth, catalog, cart, and checkout route groups use it when enabled, while it is not installed globally.
+- API signing uses `X-API-Key`, `X-API-Timestamp`, `X-API-Nonce`, and `X-API-Signature: v1=<hex>`.
+- The canonical fields are method, escaped path plus query, timestamp, nonce, and SHA-256 of the raw body, joined with `|`.
+- The canonical field order rotates according to `timestamp mod APP_API_SIGNATURE_ROTATION_COUNT`; the default is four rotations, and supported values are 1 through 5.
+- Runtime tests automatically restart the API between the signature-enabled phase and the ordinary unsigned phase; `APP_API_SIGNATURE_ENABLED` is not required in `.env.test` or `.env.test.example`.
+- Redis stores accepted key/nonce pairs for the signature window to prevent replay.
+- API request signing is intended for trusted server-to-server integrations; public browser/mobile clients continue using JWT/session authorization.
+
 ## Verification evidence
 
-The following commands passed before handoff:
+The following verification was recorded before the current documentation/logger follow-up edits:
 
 ```bash
 make check
@@ -60,6 +72,13 @@ make docker-test
 make docker-test-e2e
 make docker-test-integration
 make docker-test-runtime
+git diff --check
+```
+
+The catalog logger follow-up was subsequently verified with:
+
+```bash
+make test
 git diff --check
 ```
 

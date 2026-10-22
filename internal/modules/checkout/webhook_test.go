@@ -16,7 +16,7 @@ func TestVerifyWebhookSignature(t *testing.T) {
 	secret := "test-payment-webhook-secret"
 
 	hash := hmac.New(sha256.New, []byte(secret))
-	_, _ = hash.Write([]byte(fmt.Sprintf("%d.", timestamp)))
+	_, _ = hash.Write(fmt.Appendf(nil, "%d.", timestamp))
 	_, _ = hash.Write(body)
 	signature := hex.EncodeToString(hash.Sum(nil))
 

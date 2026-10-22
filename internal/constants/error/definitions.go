@@ -61,6 +61,12 @@ var (
 	AuthInvalidContext = faults.Definition{
 		Code: "auth.invalid_context", Kind: faults.KindUnauthenticated, Message: "invalid auth context",
 	}
+	AuthAPISignatureInvalid = faults.Definition{
+		Code: "auth.api_signature_invalid", Kind: faults.KindUnauthenticated, Message: "invalid API signature",
+	}
+	AuthAPISignatureUnavailable = faults.Definition{
+		Code: "auth.api_signature_unavailable", Kind: faults.KindUnavailable, Message: "API signature verification is temporarily unavailable",
+	}
 	AuthInsufficientPermissions = faults.Definition{
 		Code: "auth.insufficient_permissions", Kind: faults.KindForbidden, Message: "insufficient permissions",
 	}

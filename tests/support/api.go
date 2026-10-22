@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	app "gameco-technical-assessment/internal/app"
 	"gameco-technical-assessment/internal/config"
@@ -45,10 +44,6 @@ func IntegrationConfig(t *testing.T) config.Config {
 		t.Fatalf("load integration config: %v", err)
 	}
 	cfg.App.Env = "test"
-	cfg.RateLimit.Anonymous.Limit = 1000
-	cfg.RateLimit.Anonymous.Window = time.Minute
-	cfg.RateLimit.Authenticated.Limit = 1000
-	cfg.RateLimit.Authenticated.Window = time.Minute
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("validate integration config: %v", err)
 	}

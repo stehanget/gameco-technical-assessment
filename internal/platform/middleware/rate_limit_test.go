@@ -87,8 +87,8 @@ func TestRateLimitUsesUserPolicyForValidBearerToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.Use(RateLimit(client, RateLimitPolicySet{
-		Anonymous:     RateLimitPolicy{Name: "global-ip", Limit: 1, Window: time.Minute},
-		Authenticated: RateLimitPolicy{Name: "global-user", Limit: 2, Window: time.Minute},
+		Anonymous:     RateLimitPolicy{Name: "test-anonymous", Limit: 1, Window: time.Minute},
+		Authenticated: RateLimitPolicy{Name: "test-authenticated", Limit: 2, Window: time.Minute},
 	}, jwtManager))
 	router.GET("/resource", func(c *gin.Context) { c.Status(http.StatusOK) })
 
@@ -111,8 +111,8 @@ func TestRateLimitUsesAnonymousPolicyWithoutValidBearerToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.Use(RateLimit(client, RateLimitPolicySet{
-		Anonymous:     RateLimitPolicy{Name: "global-ip", Limit: 1, Window: time.Minute},
-		Authenticated: RateLimitPolicy{Name: "global-user", Limit: 10, Window: time.Minute},
+		Anonymous:     RateLimitPolicy{Name: "test-anonymous", Limit: 1, Window: time.Minute},
+		Authenticated: RateLimitPolicy{Name: "test-authenticated", Limit: 10, Window: time.Minute},
 	}, platformauth.NewJWTManager("test-secret")))
 	router.GET("/resource", func(c *gin.Context) { c.Status(http.StatusOK) })
 

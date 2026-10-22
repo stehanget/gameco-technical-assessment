@@ -1,10 +1,9 @@
 package config
 
 type Config struct {
-	App       AppConfig
-	Postgres  PostgresConfig
-	Redis     RedisConfig
-	RateLimit RateLimitConfig
+	App      AppConfig
+	Postgres PostgresConfig
+	Redis    RedisConfig
 }
 
 func Load() (Config, error) {
@@ -19,10 +18,9 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		App:       appConfig,
-		Postgres:  loadPostgresConfig(),
-		Redis:     redisConfig,
-		RateLimit: loadRateLimitConfig(),
+		App:      appConfig,
+		Postgres: loadPostgresConfig(),
+		Redis:    redisConfig,
 	}, nil
 }
 

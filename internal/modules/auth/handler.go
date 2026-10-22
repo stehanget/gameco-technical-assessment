@@ -25,6 +25,10 @@ func NewHandler(service *Service) *Handler {
 // @Tags auth
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Param request body RegisterRequest true "Register payload"
 // @Success 201 {object} TokenEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
@@ -51,6 +55,10 @@ func (h *Handler) Register(c *gin.Context) {
 // @Tags auth
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Param request body LoginRequest true "Login payload"
 // @Success 200 {object} TokenEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
@@ -78,6 +86,10 @@ func (h *Handler) Login(c *gin.Context) {
 // @Tags auth
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Param request body RefreshRequest true "Refresh payload"
 // @Success 200 {object} TokenEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
@@ -105,6 +117,10 @@ func (h *Handler) Refresh(c *gin.Context) {
 // @Tags auth
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Param request body LogoutRequest true "Logout payload"
 // @Success 200 {object} MessageEnvelope
 // @Failure 400 {object} httpx.ErrorResponse
@@ -129,6 +145,10 @@ func (h *Handler) Logout(c *gin.Context) {
 // @Description Returns the authenticated user profile
 // @Tags auth
 // @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
 // @Security BearerAuth
 // @Success 200 {object} UserEnvelope
 // @Failure 401 {object} httpx.ErrorResponse

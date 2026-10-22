@@ -30,6 +30,30 @@ const docTemplate = `{
                 "summary": "Login",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Login payload",
                         "name": "request",
                         "in": "body",
@@ -76,6 +100,30 @@ const docTemplate = `{
                 "summary": "Logout",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Logout payload",
                         "name": "request",
                         "in": "body",
@@ -116,6 +164,32 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Current user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -152,6 +226,30 @@ const docTemplate = `{
                 ],
                 "summary": "Refresh tokens",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "description": "Refresh payload",
                         "name": "request",
@@ -199,6 +297,30 @@ const docTemplate = `{
                 "summary": "Register user",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Register payload",
                         "name": "request",
                         "in": "body",
@@ -239,6 +361,32 @@ const docTemplate = `{
                     "cart"
                 ],
                 "summary": "Get active cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -286,6 +434,30 @@ const docTemplate = `{
                 ],
                 "summary": "Set cart item quantity",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "format": "uuid",
@@ -366,6 +538,30 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Product public identifier",
                         "name": "product_public_id",
@@ -417,6 +613,32 @@ const docTemplate = `{
                     "categories"
                 ],
                 "summary": "List category options",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -449,6 +671,30 @@ const docTemplate = `{
                 ],
                 "summary": "Checkout active cart",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Client-generated idempotency key",
@@ -631,6 +877,30 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Order public identifier",
                         "name": "order_public_id",
@@ -683,6 +953,30 @@ const docTemplate = `{
                 ],
                 "summary": "List public products",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Case-insensitive search over product name and description",
@@ -781,6 +1075,30 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Product public identifier",
                         "name": "product_public_id",
@@ -826,6 +1144,30 @@ const docTemplate = `{
                 ],
                 "summary": "List seller products",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Case-insensitive search over product name and description",
@@ -940,6 +1282,30 @@ const docTemplate = `{
                 "summary": "Create seller product",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
                         "description": "Product payload",
                         "name": "request",
                         "in": "body",
@@ -1001,6 +1367,30 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "format": "uuid",
                         "description": "Product public identifier",
                         "name": "product_public_id",
@@ -1058,6 +1448,30 @@ const docTemplate = `{
                 ],
                 "summary": "Update seller product",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "format": "uuid",

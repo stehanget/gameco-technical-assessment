@@ -20,10 +20,6 @@ func validConfig() Config {
 		},
 		Postgres: PostgresConfig{Host: "localhost", Port: "5432", User: "user", Database: "db"},
 		Redis:    RedisConfig{Addr: "localhost:6379"},
-		RateLimit: RateLimitConfig{
-			Anonymous:     RateLimitPolicyConfig{Limit: 1, Window: time.Minute},
-			Authenticated: RateLimitPolicyConfig{Limit: 1, Window: time.Minute},
-		},
 	}
 }
 

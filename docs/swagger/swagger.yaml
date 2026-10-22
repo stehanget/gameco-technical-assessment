@@ -619,6 +619,22 @@ paths:
       - application/json
       description: Authenticates a user and returns an access token plus refresh token
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Login payload
         in: body
         name: request
@@ -649,6 +665,22 @@ paths:
       - application/json
       description: Revokes a refresh token session
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Logout payload
         in: body
         name: request
@@ -672,6 +704,23 @@ paths:
   /api/v1/auth/me:
     get:
       description: Returns the authenticated user profile
+      parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       produces:
       - application/json
       responses:
@@ -698,6 +747,22 @@ paths:
       - application/json
       description: Exchanges a refresh token for a new access token and refresh token
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Refresh payload
         in: body
         name: request
@@ -728,6 +793,22 @@ paths:
       - application/json
       description: Creates a user and returns an access token plus refresh token
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Register payload
         in: body
         name: request
@@ -752,6 +833,23 @@ paths:
     get:
       description: Returns the authenticated buyer's active cart and current product
         prices.
+      parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       produces:
       - application/json
       responses:
@@ -780,6 +878,22 @@ paths:
     delete:
       description: Removes a product from the authenticated buyer's active cart.
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Product public identifier
         format: uuid
         in: path
@@ -819,6 +933,22 @@ paths:
       - application/json
       description: Adds a product to the active cart or replaces its quantity.
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Product public identifier
         format: uuid
         in: path
@@ -871,6 +1001,23 @@ paths:
     get:
       description: Lists canonical categories for public catalog filters and seller
         product forms
+      parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       produces:
       - application/json
       responses:
@@ -890,6 +1037,22 @@ paths:
       description: Creates one pending-payment order from the authenticated buyer's
         active cart. Retries with the same Idempotency-Key replay the original result.
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Client-generated idempotency key
         in: header
         name: Idempotency-Key
@@ -1008,6 +1171,22 @@ paths:
       description: Returns an order and its immutable item snapshots for the authenticated
         buyer. Orders owned by another buyer are not disclosed.
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Order public identifier
         format: uuid
         in: path
@@ -1047,6 +1226,22 @@ paths:
       description: Lists active, non-deleted products with filtering, search, sorting,
         and cursor pagination
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Case-insensitive search over product name and description
         in: query
         name: q
@@ -1113,6 +1308,22 @@ paths:
     get:
       description: Returns one active, non-deleted product by its UUIDv7 public identifier
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Product public identifier
         format: uuid
         in: path
@@ -1141,6 +1352,22 @@ paths:
     get:
       description: Lists non-deleted products owned by the authenticated seller
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Case-insensitive search over product name and description
         in: query
         name: q
@@ -1217,6 +1444,22 @@ paths:
       consumes:
       - application/json
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Product payload
         in: body
         name: request
@@ -1255,6 +1498,22 @@ paths:
     get:
       description: Returns one non-deleted product owned by the authenticated seller
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Product public identifier
         format: uuid
         in: path
@@ -1293,6 +1552,22 @@ paths:
       consumes:
       - application/json
       parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
       - description: Product public identifier
         format: uuid
         in: path
