@@ -170,6 +170,12 @@ func (r *Repository) Checkout(ctx context.Context, buyerID uint, key, requestHas
 		if err := tx.Model(&IdempotencyKey{}).Where("id = ?", idem.ID).Updates(map[string]any{"order_id": order.ID, "response_status": 201}).Error; err != nil {
 			return err
 		}
+		if err := audit.Write(ctx, tx, audit.Event{ActorUserID: &buyerID, EventType: "checkout.succeeded", AggregateType: "order", AggregateID: order.PublicID.String(), Metadata: map[string]any{"status": order.Status, "total_amount": order.TotalAmount}}); err != nil {
+			return err
+		}
+		if err := audit.Write(ctx, tx, audit.Event{ActorUserID: &buyerID, EventType: "payment.created", AggregateType: "payment", AggregateID: payment.PublicID.String(), Metadata: map[string]any{"provider": payment.Provider, "status": payment.Status, "amount": payment.Amount}}); err != nil {
+			return err
+		}
 		response, err = loadOrder(tx, order.ID)
 		return err
 	})

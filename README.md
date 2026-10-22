@@ -81,8 +81,6 @@ For PostgreSQL/Redis integration and runtime tests, create the ignored test envi
 cp .env.test.example .env.test
 ```
 
-`.env.test` is local-only and must not be committed.
-
 ### 2. Start full dev stack with live reload
 
 ```bash
@@ -92,10 +90,26 @@ make docker-dev-up
 ### 3. Run migrations
 
 ```bash
-make docker-migrate-up
+make docker-dev-migrate-up
 ```
 
-### 4. Generate Swagger docs
+### 4. Seed development data
+
+```bash
+make docker-dev-seed
+```
+
+The seed command creates the baseline roles, permissions, categories, products, and the example user (`user@mail.com`) used by the assessment flow. Run it after migrations; otherwise authenticated and catalog scenarios may fail because the database is empty.
+
+If you are using the base/production-style Compose stack instead of the live-reload dev stack, use:
+
+```bash
+make docker-up
+make docker-migrate-up
+make docker-seed
+```
+
+### 5. Generate Swagger docs
 
 If you have local Go installed:
 
@@ -109,7 +123,7 @@ If you want Docker-only generation:
 make docker-swagger
 ```
 
-### 5. Open Swagger UI
+### 6. Open Swagger UI
 
 ```text
 http://localhost:8080/swagger/index.html
@@ -278,6 +292,7 @@ scripts/                     # repository helper scripts
 - [Identifier conventions](docs/identifier-conventions.md) — internal IDs, public UUIDv7 identifiers, JWT JTI, and refresh-token storage
 - [Database schema](docs/schema.dbml) — current PostgreSQL auth and marketplace schema
 - [Threat model](docs/THREAT-MODEL.md) — OWASP API risks, attack scenarios, mitigations, and residual risks
+- [Security operations](docs/SECURITY-OPERATIONS.md) — secret rotation, audit events, anti-enumeration boundaries, and release security checks
 - [Architecture decisions](docs/ADR/README.md) — accepted session, data model, stock concurrency, rate-limit, and CORS decisions
 - [API signature guide](docs/api-signature-guide.md) — trusted server-to-server request signing, canonicalization, replay protection, and integration examples
 - [Assessment handoff](docs/assessment-handoff.md) — delivered scope, verification evidence, and operational follow-up

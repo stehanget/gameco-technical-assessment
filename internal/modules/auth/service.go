@@ -5,6 +5,7 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ type Service struct {
 	jwtManager *platformauth.JWTManager
 	config     config.AppConfig
 	clock      platformclock.Clock
+	logger     *slog.Logger
 }
 
 type SessionMetadata struct {
@@ -60,7 +62,13 @@ func NewServiceWithClock(repository *Repository, redisClient *redis.Client, jwtM
 	if timeSource == nil {
 		timeSource = platformclock.System{}
 	}
-	return &Service{repository: repository, redis: redisClient, jwtManager: jwtManager, config: cfg, clock: timeSource}
+	return &Service{repository: repository, redis: redisClient, jwtManager: jwtManager, config: cfg, clock: timeSource, logger: slog.Default()}
+}
+
+func (s *Service) SetLogger(logger *slog.Logger) {
+	if logger != nil {
+		s.logger = logger
+	}
 }
 
 func (s *Service) Register(ctx context.Context, input RegisterRequest, metadata SessionMetadata) (TokenResponse, error) {
@@ -93,7 +101,11 @@ func (s *Service) Register(ctx context.Context, input RegisterRequest, metadata 
 	if err != nil {
 		return TokenResponse{}, err
 	}
-	return s.issueTokenPair(ctx, user, metadata)
+	response, err := s.issueTokenPair(ctx, user, metadata)
+	if err == nil {
+		s.recordAuthAudit(ctx, "auth.register_succeeded", user.ID, user.PublicID.String(), metadata, nil)
+	}
+	return response, err
 }
 
 func (s *Service) Login(ctx context.Context, input LoginRequest, metadata SessionMetadata) (TokenResponse, error) {
@@ -101,7 +113,7 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			_ = platformauth.ComparePassword(dummyPasswordHash, input.Password)
-			s.recordFailedLoginAudit(ctx, input.Email, nil, "invalid_credentials")
+			s.recordFailedLoginAudit(ctx, input.Email, nil, "invalid_credentials", metadata)
 			return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, nil)
 		}
 		return TokenResponse{}, err
@@ -112,7 +124,7 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 		return TokenResponse{}, stateErr
 	}
 	if securityState.LockedUntil != nil && s.clock.Now().Before(*securityState.LockedUntil) {
-		s.recordFailedLoginAudit(ctx, input.Email, &user.ID, "account_locked")
+		s.recordFailedLoginAudit(ctx, input.Email, &user.ID, "account_locked", metadata)
 		return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, nil)
 	}
 
@@ -120,13 +132,17 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 		if recordErr := s.repository.RecordLoginFailure(ctx, user.ID, s.clock.Now(), s.clock.Now().Add(loginLockDuration)); recordErr != nil {
 			return TokenResponse{}, recordErr
 		}
-		s.recordFailedLoginAudit(ctx, input.Email, &user.ID, "invalid_credentials")
+		s.recordFailedLoginAudit(ctx, input.Email, &user.ID, "invalid_credentials", metadata)
 		return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, err)
 	}
 	if err := s.repository.ResetLoginSecurityState(ctx, user.ID); err != nil {
 		return TokenResponse{}, err
 	}
-	return s.issueTokenPair(ctx, user, metadata)
+	response, err := s.issueTokenPair(ctx, user, metadata)
+	if err == nil {
+		s.recordAuthAudit(ctx, "auth.login_succeeded", user.ID, user.PublicID.String(), metadata, nil)
+	}
+	return response, err
 }
 
 func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata SessionMetadata) (TokenResponse, error) {
@@ -136,6 +152,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			reuseErr := s.repository.HandleRefreshTokenReuse(ctx, refreshHash)
 			if errors.Is(reuseErr, ErrRefreshTokenReuse) {
+				s.recordAuthAudit(ctx, "auth.refresh_token_reused", 0, refreshHash, metadata, map[string]any{"reason": "inactive_or_expired_session"})
 				return TokenResponse{}, faults.New(errorconst.AuthRefreshTokenReused, reuseErr)
 			}
 			return TokenResponse{}, reuseErr
@@ -172,21 +189,27 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, metadata Ses
 	}
 	if _, err := s.repository.RotateRefreshSession(ctx, refreshHash, replacement); err != nil {
 		if errors.Is(err, ErrRefreshTokenReuse) {
+			s.recordAuthAudit(ctx, "auth.refresh_token_reused", 0, refreshHash, metadata, map[string]any{"reason": "rotation_conflict"})
 			return TokenResponse{}, faults.New(errorconst.AuthRefreshTokenReused, err)
 		}
 		return TokenResponse{}, err
 	}
 	_ = s.redis.Del(ctx, s.refreshSessionKey(refreshHash)).Err()
 	_ = s.redis.Set(ctx, s.refreshSessionKey(newRefreshHash), jti, s.config.RefreshTokenTTL).Err()
+	s.recordAuthAudit(ctx, "auth.refresh_succeeded", user.ID, jti, metadata, nil)
 	return TokenResponse{AccessToken: accessToken, RefreshToken: newRefreshToken, TokenType: "Bearer", ExpiresIn: int64(s.config.AccessTokenTTL.Seconds()), User: mapUser(user, access)}, nil
 }
 
-func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+func (s *Service) Logout(ctx context.Context, refreshToken string, metadata SessionMetadata) error {
 	refreshHash := platformauth.HashToken(refreshToken)
 	if err := s.repository.RevokeSessionByRefreshHash(ctx, refreshHash); err != nil {
 		return err
 	}
-	return s.redis.Del(ctx, s.refreshSessionKey(refreshHash)).Err()
+	if err := s.redis.Del(ctx, s.refreshSessionKey(refreshHash)).Err(); err != nil {
+		return err
+	}
+	s.recordAuthAudit(ctx, "auth.logout", 0, refreshHash, metadata, nil)
+	return nil
 }
 
 func (s *Service) Me(ctx context.Context, userID uint) (UserResponse, error) {
@@ -246,14 +269,43 @@ func (s *Service) issueTokenPair(ctx context.Context, user User, metadata Sessio
 	return TokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, TokenType: "Bearer", ExpiresIn: int64(s.config.AccessTokenTTL.Seconds()), User: mapUser(user, access)}, nil
 }
 
-func (s *Service) recordFailedLoginAudit(ctx context.Context, email string, actorUserID *uint, reason string) {
-	_ = audit.Write(ctx, s.repository.DB(), audit.Event{
+func (s *Service) recordFailedLoginAudit(ctx context.Context, email string, actorUserID *uint, reason string, metadata SessionMetadata) {
+	if err := audit.Write(ctx, s.repository.DB(), audit.Event{
 		ActorUserID:   actorUserID,
 		EventType:     "auth.login_failed",
 		AggregateType: "login_attempt",
 		AggregateID:   platformauth.HashToken(strings.ToLower(strings.TrimSpace(email))),
 		Metadata:      map[string]any{"reason": reason},
-	})
+		IPAddress:     metadata.IPAddress,
+		UserAgent:     metadata.UserAgent,
+	}); err != nil {
+		s.logAuditFailure(ctx, "auth.login_failed", err)
+	}
+}
+
+func (s *Service) recordAuthAudit(ctx context.Context, eventType string, actorUserID uint, aggregateID string, metadata SessionMetadata, details map[string]any) {
+	var actor *uint
+	if actorUserID != 0 {
+		actor = &actorUserID
+	}
+	if err := audit.Write(ctx, s.repository.DB(), audit.Event{
+		ActorUserID:   actor,
+		EventType:     eventType,
+		AggregateType: "auth_session",
+		AggregateID:   aggregateID,
+		Metadata:      details,
+		IPAddress:     metadata.IPAddress,
+		UserAgent:     metadata.UserAgent,
+	}); err != nil {
+		s.logAuditFailure(ctx, eventType, err)
+	}
+}
+
+func (s *Service) logAuditFailure(ctx context.Context, eventType string, err error) {
+	if s.logger == nil {
+		return
+	}
+	s.logger.WarnContext(ctx, "security audit write failed", slog.String("event_type", eventType), slog.String("error", err.Error()))
 }
 
 func (s *Service) refreshSessionKey(refreshHash string) string {

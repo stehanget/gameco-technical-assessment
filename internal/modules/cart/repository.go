@@ -7,6 +7,7 @@ import (
 
 	cartconstants "gameco-technical-assessment/internal/constants/cart"
 	catalogconstants "gameco-technical-assessment/internal/constants/catalog"
+	"gameco-technical-assessment/internal/platform/audit"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -118,6 +119,16 @@ func (r *Repository) SetItem(ctx context.Context, buyerID uint, productPublicID 
 			}
 		}
 		result.Cart = cart
+		actorUserID := buyerID
+		if err := audit.Write(ctx, tx, audit.Event{
+			ActorUserID:   &actorUserID,
+			EventType:     "cart.item_set",
+			AggregateType: "cart",
+			AggregateID:   cart.PublicID.String(),
+			Metadata:      map[string]any{"product_id": productPublicID, "quantity": quantity},
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -132,10 +143,26 @@ func (r *Repository) DeleteItem(ctx context.Context, buyerID uint, productPublic
 		db := tx.Model(&CartItem{}).
 			Where("cart_id IN (SELECT id FROM carts WHERE buyer_id = ? AND status = ?)", buyerID, cartconstants.StatusActive).
 			Where("product_id IN (SELECT id FROM products WHERE public_id = ?)", productPublicID)
-		if err := db.Delete(&CartItem{}).Error; err != nil {
+		deleteResult := db.Delete(&CartItem{})
+		if deleteResult.Error != nil {
+			return deleteResult.Error
+		}
+		if err := tx.Where("buyer_id = ? AND status = ?", buyerID, cartconstants.StatusActive).First(&result.Cart).Error; err != nil {
 			return err
 		}
-		return tx.Where("buyer_id = ? AND status = ?", buyerID, cartconstants.StatusActive).First(&result.Cart).Error
+		if deleteResult.RowsAffected > 0 {
+			actorUserID := buyerID
+			if err := audit.Write(ctx, tx, audit.Event{
+				ActorUserID:   &actorUserID,
+				EventType:     "cart.item_deleted",
+				AggregateType: "cart",
+				AggregateID:   result.Cart.PublicID.String(),
+				Metadata:      map[string]any{"product_id": productPublicID},
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return result, nil

@@ -56,6 +56,7 @@ func NewRouter(container *Container) *gin.Engine {
 	}
 	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
 		Service:      authService,
+		Logger:       container.Logger,
 		Redis:        container.Redis,
 		JWTSigner:    container.JWTSigner,
 		APISignature: container.Config.App.APISignature,

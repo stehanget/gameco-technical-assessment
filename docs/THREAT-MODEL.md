@@ -55,6 +55,7 @@ The repository currently has implemented authentication, database-backed session
 | Browser response headers | API responses set `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and a restrictive `Permissions-Policy` | `internal/platform/middleware/security_headers.go`, `internal/platform/middleware/security_headers_test.go` |
 | Schema integrity | Internal numeric IDs, unique public IDs, join-table keys, and declared foreign keys are documented/migrated | `migrations/`, `docs/schema.dbml` |
 | Regression coverage | Register → login → refresh rotation → `/auth/me`, including refresh-token reuse handling, is covered by a black-box E2E test | `tests/e2e/auth_test.go` |
+| Security audit producers | Failed login, successful registration/login/refresh, logout, refresh-token reuse, cart item changes, product price changes, checkout success, payment creation, and payment-webhook order transitions write bounded audit events directly; successful domain mutations pair the audit insert with the business transaction and never contain raw credentials | `internal/modules/auth/service.go`, `internal/modules/cart/service.go`, `internal/modules/catalog/repository.go`, `internal/modules/checkout/repository.go`, `internal/platform/audit/audit.go` |
 | Error responses | Shared error envelope, definition-based typed errors containing code/kind/message, status-based safe mapper, request ID propagation, structured logging, panic recovery, and handler migration away from raw error responses | `internal/platform/httpx/response.go`, `internal/platform/httpx/error_test.go`, `internal/platform/faults/error.go`, `internal/constants/error/definitions.go`, `internal/platform/middleware/request_id.go`, `internal/platform/middleware/logging.go`, `internal/platform/middleware/recovery.go`, `docs/ADR/0005-centralized-error-handling.md` |
 
 ## OWASP API Security Top 10 (2023) mapping
@@ -73,7 +74,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** bcrypt password hashing, strict `HS256` verification, 15-minute access tokens, database-backed active-session lookup, short-lived session caching with revoke markers, atomic refresh rotation, refresh hash persistence, reuse detection, 24-hour refresh tokens, and server-side logout.
 
-**Gaps/residual risk:** Login failure lockout state (`user_login_security_states`) is wired into the login service with a five-attempt, bounded lockout and reset-after-success behavior. Unknown-email attempts perform dummy bcrypt comparison and emit sanitized failed-login audit events. MFA, manual unlock workflow, and device/session management are not implemented. JWT rotation supports a current secret plus a bounded previous-secret list; secure secret-manager storage and rotation orchestration remain deployment responsibilities.
+**Gaps/residual risk:** Login failure lockout state (`user_login_security_states`) is wired into the login service with a five-attempt, bounded lockout and reset-after-success behavior. Unknown-email attempts perform dummy bcrypt comparison and emit sanitized failed-login audit events. Registration still returns a distinct existing-email conflict and auto-issues tokens, so full registration anti-enumeration requires a separate verification/activation contract. MFA, manual unlock workflow, and device/session management are not implemented. JWT rotation supports a current secret plus a bounded previous-secret list; secure secret-manager storage and rotation orchestration remain deployment responsibilities.
 
 ### API3:2023 Broken Object Property Level Authorization
 
@@ -129,7 +130,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** Explicit CORS allowlist, credentials disabled, browser response security headers, environment-based configuration, recovery middleware, generated Swagger, and `.env.example` without real secrets.
 
-**Residual risk:** Swagger is disabled in `production`. Production Compose still requires a deliberate manual hardening pass before deployment: explicit credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
+**Residual risk:** Swagger is disabled in `production`. Production Compose still requires a deliberate manual hardening pass before deployment: explicit credentials, pinned application images, and internal-only PostgreSQL/Redis networking. Repository automation now exposes `make security-check` and a scheduled CI workflow for vulnerability/static analysis and secret scanning; container scanning and provider-managed secret scanning remain CI/deployment responsibilities.
 
 ### Development-only signature demonstration endpoints
 

@@ -30,7 +30,7 @@ services:
       retries: 30
 
   test-runner:
-    image: golang:1.25
+    image: golang:1.26.10
     working_dir: /app
     volumes:
       - ../..:/app

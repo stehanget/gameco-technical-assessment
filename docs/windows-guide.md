@@ -247,7 +247,7 @@ docker compose -f deployments/compose/docker-compose.yml run --rm migrate up
 ### Generate Swagger
 
 ```bash
-docker run --rm -v "$PWD:/app" -w /app golang:1.25 sh -lc 'go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/main.go -o docs/swagger'
+docker run --rm -v "$PWD:/app" -w /app golang:1.26.10 sh -lc 'go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/main.go -o docs/swagger'
 ```
 
 ### Stop the stack

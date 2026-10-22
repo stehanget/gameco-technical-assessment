@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"gameco-technical-assessment/internal/config"
@@ -15,6 +16,7 @@ import (
 
 type RouteDependencies struct {
 	Service      *Service
+	Logger       *slog.Logger
 	Redis        *redis.Client
 	JWTSigner    *platformauth.JWTManager
 	APISignature config.APISignatureConfig
@@ -37,6 +39,7 @@ func NewActorResolver(service *Service) middleware.ActorResolver {
 }
 
 func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
+	deps.Service.SetLogger(deps.Logger)
 	handler := NewHandler(deps.Service)
 	resolveActor := NewActorResolver(deps.Service)
 

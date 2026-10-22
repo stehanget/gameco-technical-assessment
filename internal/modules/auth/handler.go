@@ -132,7 +132,7 @@ func (h *Handler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.Logout(c.Request.Context(), request.RefreshToken); err != nil {
+	if err := h.service.Logout(c.Request.Context(), request.RefreshToken, SessionMetadata{UserAgent: c.GetHeader("User-Agent"), IPAddress: c.ClientIP()}); err != nil {
 		httpx.HandleError(c, err)
 		return
 	}
