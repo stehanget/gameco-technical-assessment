@@ -164,7 +164,7 @@ The implementation must review or add indexes for the selected access paths, inc
 
 ## Implementation status
 
-Decision accepted. The next implementation slice is:
+Decision accepted and implemented. The catalog slice includes:
 
 1. catalog read DTOs;
 2. PostgreSQL `pg_trgm` extension and product search indexes;
@@ -172,6 +172,8 @@ Decision accepted. The next implementation slice is:
 4. public list/detail service and handlers;
 5. Swagger contract;
 6. focused tests for filtering, sorting, cursor traversal, visibility, public identifiers, search, and error behavior.
+
+Seller product mutations, cart operations, checkout, order reads, and payment webhooks are documented by separate ADRs and are not part of this catalog decision.
 
 ## Evidence and requirements
 

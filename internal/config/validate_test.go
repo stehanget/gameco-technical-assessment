@@ -10,6 +10,8 @@ func validConfig() Config {
 		App: AppConfig{
 			Name:                               "test",
 			Port:                               "8080",
+			ShutdownTimeout:                    10 * time.Second,
+			MaxRequestBodyBytes:                DefaultMaxRequestBodyBytes,
 			JWTSecret:                          "test-secret",
 			PaymentWebhookEventRetention:       7 * 24 * time.Hour,
 			PaymentWebhookCleanupInterval:      time.Hour,

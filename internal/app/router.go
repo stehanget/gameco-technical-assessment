@@ -25,6 +25,7 @@ func NewRouter(container *Container) *gin.Engine {
 		panic(err)
 	}
 	router.Use(middleware.RequestID())
+	router.Use(middleware.RequestBodyLimit(container.Config.App.MaxRequestBodyBytes))
 	router.Use(middleware.SecurityHeaders())
 	router.Use(middleware.CORS())
 	router.Use(middleware.Recovery(container.Logger))

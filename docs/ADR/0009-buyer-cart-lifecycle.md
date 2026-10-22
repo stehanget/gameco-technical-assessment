@@ -1,6 +1,6 @@
 # ADR-0009: Buyer Cart Lifecycle and Mutation Contract
 
-- **Status:** Accepted for the cart slice
+- **Status:** Accepted for the cart slice; checkout follow-up implemented in ADR-0010
 - **Date:** 2026-10-21
 - **Scope:** Buyer cart lifecycle before checkout
 
@@ -122,12 +122,10 @@ The response always serializes both `items` and `unavailable_items` as arrays, i
 - Empty cart returns `items: []`.
 - PostgreSQL and runtime tests cover the lifecycle against the real migration and binary API.
 
-## Explicitly deferred
+## Explicitly deferred from this cart ADR
 
-- checkout endpoint and checkout idempotency key;
-- order and order-item creation;
-- atomic stock reservation and stock movement ledger writes;
-- payment creation and webhook processing;
+These items were intentionally outside the original cart slice. Checkout, order creation, atomic stock reservation, payment creation, and webhook processing were subsequently implemented and documented in ADR-0010 and ADR-0011.
+
 - cart expiration/abandonment worker;
 - manual cart merge across devices.
 

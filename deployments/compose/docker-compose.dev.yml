@@ -11,6 +11,7 @@ services:
       - go-build-cache:/root/.cache/go-build
     environment:
       APP_ENV: development
+      APP_MAX_REQUEST_BODY_BYTES: ${APP_MAX_REQUEST_BODY_BYTES:-1048576}
       APP_API_SIGNATURE_ENABLED: ${APP_API_SIGNATURE_ENABLED:-false}
     ports:
       - "8080:8080"
@@ -32,6 +33,7 @@ services:
       - go-build-cache:/root/.cache/go-build
     environment:
       APP_ENV: development
+      APP_MAX_REQUEST_BODY_BYTES: ${APP_MAX_REQUEST_BODY_BYTES:-1048576}
       APP_API_SIGNATURE_ENABLED: ${APP_API_SIGNATURE_ENABLED:-false}
     depends_on:
       postgres:

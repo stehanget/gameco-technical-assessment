@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-const maxPreviousJWTSecrets = 3
+const (
+	maxPreviousJWTSecrets      = 3
+	DefaultMaxRequestBodyBytes = 1 << 20
+)
 
 type AppConfig struct {
 	Name                               string
@@ -15,6 +18,7 @@ type AppConfig struct {
 	ReadTimeout                        time.Duration
 	WriteTimeout                       time.Duration
 	ShutdownTimeout                    time.Duration
+	MaxRequestBodyBytes                int64
 	JWTSecret                          string
 	JWTPreviousSecrets                 []string
 	PaymentWebhookSecret               string
@@ -39,6 +43,11 @@ func loadAppConfig() (AppConfig, error) {
 	}
 
 	shutdownTimeout, err := getEnvDuration("APP_SHUTDOWN_TIMEOUT", 10*time.Second)
+	if err != nil {
+		return AppConfig{}, err
+	}
+
+	maxRequestBodyBytes, err := getEnvInt("APP_MAX_REQUEST_BODY_BYTES", DefaultMaxRequestBodyBytes)
 	if err != nil {
 		return AppConfig{}, err
 	}
@@ -87,6 +96,7 @@ func loadAppConfig() (AppConfig, error) {
 		ReadTimeout:                        readTimeout,
 		WriteTimeout:                       writeTimeout,
 		ShutdownTimeout:                    shutdownTimeout,
+		MaxRequestBodyBytes:                int64(maxRequestBodyBytes),
 		JWTSecret:                          jwtSecret,
 		JWTPreviousSecrets:                 previousSecrets,
 		PaymentWebhookSecret:               getEnv("APP_PAYMENT_WEBHOOK_SECRET", ""),

@@ -4,7 +4,7 @@
 
 This document covers the current backend foundation and the agreed marketplace design in `docs/schema.dbml`.
 
-The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, buyer cart item management, the initial checkout flow, buyer order detail reads, and signed payment webhook processing. Cart ownership, current-stock validation, self-purchase prevention, idempotent checkout retries, order/payment creation, stock reservation, webhook event replay protection, payment state transitions, expiry-triggered stock restoration, webhook retention cleanup, buyer-owned order detail authorization, and checkout/runtime coverage are implemented. Payment expiry scheduling/retry, order listing, refunds, and audit-event producers remain future transaction scope.
+The repository currently has implemented authentication, database-backed sessions, role/permission authorization, CORS, Redis-backed rate limiting, migrations, seeders, public catalog reads, seller product management, buyer cart item management, the initial checkout flow, buyer and seller order list/detail reads, signed payment webhook processing, and development-only signature demonstration endpoints. Cart ownership, current-stock validation, self-purchase prevention, idempotent checkout retries, order/payment creation, stock reservation, webhook event replay protection, payment state transitions, expiry-triggered stock restoration, webhook retention cleanup, buyer/seller order authorization, and checkout/runtime coverage are implemented. Payment expiry scheduling/retry, refunds, and audit-event producers remain future transaction scope.
 
 ## Assets
 
@@ -65,7 +65,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Every marketplace read and mutation must scope the query by the authenticated actor and resource ownership, not by identifier alone. Seller product writes must include seller ownership in the database query. Buyer order reads must include buyer ownership. Public catalog reads must exclude soft-deleted products.
 
-**Current status:** Public catalog reads, seller product handlers, seller order listing, the authenticated buyer checkout flow, and `GET /api/v1/orders/{order_public_id}` are implemented with actor-scoped checks. Seller order listing predicates on `order_items.seller_id` and returns only seller-owned item snapshots plus seller subtotal; foreign seller items and full buyer totals are not exposed. Order detail queries scope by both public order identifier and authenticated buyer ID; foreign-owner and malformed-identifier cases are covered by E2E and PostgreSQL integration tests.
+**Current status:** Public catalog reads, seller product handlers, buyer and seller order list/detail handlers, the authenticated buyer checkout flow, and `GET /api/v1/orders/{order_public_id}` are implemented with actor-scoped checks. Seller order listing and detail predicate on `order_items.seller_id` and return only seller-owned item snapshots plus seller subtotal; foreign seller items and full buyer totals are not exposed. Buyer list/detail queries scope by authenticated buyer ID. Foreign-owner and malformed-identifier cases are covered by E2E and PostgreSQL integration tests.
 
 ### API2:2023 Broken Authentication
 
@@ -89,7 +89,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** Redis-backed shared rate limiting, request body limits, bounded query filters, cursor page-size limits, indexed catalog search, timeout-aware external calls, and endpoint-specific policies.
 
-**Current status:** The shared `middleware.RateLimit` middleware is applied explicitly at route scope: auth routes retain a dedicated policy, payment webhooks retain a high-capacity dedicated policy, and catalog, cart, and buyer checkout/order routes opt into shared global anonymous/authenticated policies at 60 requests per minute for anonymous traffic and 120 requests per minute for authenticated traffic. There is no implicit limiter on routes that have not opted in. Public catalog query bounds, opaque cursors, allow-listed sorting, PostgreSQL trigram search indexes, and a 64 KiB payment-webhook body limit are implemented. Dedicated payment-provider circuit breaking remains future hardening work.
+**Current status:** The shared `middleware.RateLimit` middleware is applied explicitly at route scope: auth routes retain a dedicated policy, payment webhooks retain a high-capacity dedicated policy, and catalog, cart, and buyer checkout/order routes opt into shared global anonymous/authenticated policies at 60 requests per minute for anonymous traffic and 120 requests per minute for authenticated traffic. A global `middleware.RequestBodyLimit` caps every HTTP request body at the configured `APP_MAX_REQUEST_BODY_BYTES` limit (default `1048576` bytes / 1 MiB); the payment webhook applies its stricter 64 KiB bound before decoding. There is no implicit limiter on routes that have not opted in. Public catalog query bounds, opaque cursors, allow-listed sorting, PostgreSQL trigram search indexes, and bounded webhook payloads are implemented. Dedicated payment-provider circuit breaking remains future hardening work.
 
 ### Public catalog query safety
 
@@ -105,7 +105,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation:** Permission catalog constants and `RequirePermissions` middleware with default deny.
 
-**Current status:** Auth permission enforcement and seller product route guards are implemented. Admin operations and buyer/order permissions remain pending with the future administrative and transaction surfaces.
+**Current status:** Auth permission enforcement, buyer order permissions, seller product guards, and seller order guards are implemented. Admin operations remain pending with the future administrative surfaces.
 
 ### API6:2023 Unrestricted Access to Sensitive Business Flows
 
@@ -131,6 +131,17 @@ The repository currently has implemented authentication, database-backed session
 
 **Residual risk:** Swagger is disabled in `production`. Production Compose still requires a deliberate manual hardening pass before deployment: explicit credentials, pinned application images, and internal-only PostgreSQL/Redis networking.
 
+### Development-only signature demonstration endpoints
+
+The development environment exposes two unauthenticated helper routes for reviewer demonstrations:
+
+```text
+POST /api/v1/dev/signatures/api
+POST /api/v1/dev/signatures/webhook
+```
+
+They are registered only when `APP_ENV=development`; the application router does not register them for `test` or `production`. The handlers use configured signing material internally, return generated headers and the exact signed body, and never accept or return signing secrets. These routes must remain limited to a trusted development network and are not a production integration surface.
+
 ### API9:2023 Improper Inventory Management
 
 **Risk:** Retired routes, legacy fields, or undocumented endpoints remain reachable and create an unexpected attack surface.
@@ -154,7 +165,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Seller A submits Seller B's product public ID to the update endpoint.
 - **Impact:** Unauthorized price, stock, or catalog mutation.
 - **Mitigation:** Update query must constrain both `product.public_id` and `product.seller_id = authenticated_user_id`; protected fields must come from explicit DTOs.
-- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Seller order listing is likewise seller-item scoped and covered by E2E. A dedicated audit read API and broader administrative order projections remain future scope.
+- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Seller order listing and detail are likewise seller-item scoped and covered by E2E. A dedicated audit read API and broader administrative order projections remain future scope.
 
 ### 2. Two checkout requests consume the last stock
 
@@ -203,7 +214,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** A seller uses the buyer capability of the same account to add their own product to a cart and later attempts to create an artificial sale.
 - **Impact:** Manipulated sales, revenue, promotion, or review metrics.
 - **Mitigation:** Cart item mutation compares the locked product `seller_id` with the authenticated actor ID and rejects a match with `commerce.self_purchase_not_allowed`. Checkout must repeat the same validation inside its transaction rather than trusting cart state.
-- **Residual risk:** Cart-time prevention and checkout-time defense-in-depth are implemented. Broader order listing and administrative ownership projections remain future scope.
+- **Residual risk:** Cart-time prevention and checkout-time defense-in-depth are implemented. A dedicated audit read API and broader administrative ownership projections remain future scope.
 
 ## Logging and privacy rules
 
@@ -215,7 +226,7 @@ The repository currently has implemented authentication, database-backed session
 
 ## What is not safe yet
 
-1. Cart lifecycle, cart ownership, current-stock validation, self-purchase prevention, checkout idempotency, order/payment creation, stock reservation, stock-ledger writes, signed payment webhook processing, expiry-triggered cancellation/stock restoration, retention cleanup, and checkout/payment HTTP/integration/runtime coverage are implemented. Payment expiry scheduling/retry, buyer order listing, and audit-event producers remain future scope.
+1. Cart lifecycle, cart ownership, current-stock validation, self-purchase prevention, checkout idempotency, order/payment creation, stock reservation, stock-ledger writes, signed payment webhook processing, expiry-triggered cancellation/stock restoration, retention cleanup, buyer/seller order list/detail reads, and checkout/payment HTTP/integration/runtime coverage are implemented. Payment expiry scheduling/retry, refunds, and audit-event producers remain future scope.
 2. `user_login_security_states` is wired into login failure tracking, five-attempt lockout, reset-after-success behavior, and PostgreSQL/integration/runtime coverage. MFA, manual unlock/audit workflow, and device/session management remain future hardening scope.
 3. JWT key rotation is implemented through `APP_JWT_SECRET` plus a bounded `APP_JWT_PREVIOUS_SECRETS` verification list; secret-manager integration and automated rotation orchestration are not implemented.
 4. Production Compose still requires a manual hardening pass in `deployments/compose/docker-compose.yml`: explicit deployment credentials, pinned application images, and internal-only PostgreSQL/Redis networking.

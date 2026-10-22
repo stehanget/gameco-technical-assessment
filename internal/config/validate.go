@@ -15,6 +15,10 @@ func (c Config) Validate() error {
 		return fmt.Errorf("APP_JWT_SECRET must be explicitly configured")
 	}
 
+	if c.App.MaxRequestBodyBytes <= 0 {
+		return fmt.Errorf("APP_MAX_REQUEST_BODY_BYTES must be greater than zero")
+	}
+
 	if c.App.Env == "production" && c.App.PaymentWebhookSecret == "" {
 		return fmt.Errorf("APP_PAYMENT_WEBHOOK_SECRET must be explicitly configured")
 	}

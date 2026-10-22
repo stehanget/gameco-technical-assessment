@@ -189,14 +189,20 @@ make install-hooks
 - `POST /api/v1/seller/products`
 - `PATCH /api/v1/seller/products/:product_public_id`
 
-### Cart, checkout, seller orders, and payments
+### Cart, checkout, and orders
 - `GET /api/v1/cart`
 - `PUT /api/v1/cart/items/:product_public_id`
 - `DELETE /api/v1/cart/items/:product_public_id`
 - `POST /api/v1/checkout`
+- `GET /api/v1/orders`
 - `GET /api/v1/orders/:order_public_id`
 - `GET /api/v1/seller/orders`
+- `GET /api/v1/seller/orders/:order_public_id`
 - `POST /api/v1/webhooks/payment`
+
+### Development demo tools
+- `POST /api/v1/dev/signatures/api` — only when `APP_ENV=development`
+- `POST /api/v1/dev/signatures/webhook` — only when `APP_ENV=development`
 
 ### Health
 - `GET /health` — backward-compatible liveness alias
