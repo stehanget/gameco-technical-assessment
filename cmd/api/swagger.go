@@ -29,6 +29,10 @@
 // @tag.description Canonical category options used by public catalog filters and seller product forms.
 // @tag.name seller-products
 // @tag.description Authenticated seller product management with ownership authorization.
+// @tag.name seller-orders
+// @tag.description Authenticated seller order reads scoped to the seller's own order items and subtotals.
+// @tag.name development-tools
+// @tag.description Development-only signature generators for trusted API requests and payment webhook demonstrations.
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

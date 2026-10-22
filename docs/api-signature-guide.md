@@ -264,7 +264,41 @@ X-Payment-Signature: <payment-signature>
 
 Do not replace those headers with `X-API-Key` or `X-API-Signature`.
 
-## Testing checklist
+## Development demo signers
+
+When `APP_ENV=development`, the API exposes two unauthenticated helper endpoints for local demonstrations:
+
+```text
+POST /api/v1/dev/signatures/api
+POST /api/v1/dev/signatures/webhook
+```
+
+These routes are not registered when `APP_ENV=production` or `APP_ENV=test`. They generate headers from the configured development secrets but never return the secrets themselves. Do not expose a development deployment to an untrusted network.
+
+API signer request:
+
+```json
+{
+  "key_id": "<configured-key-id>",
+  "method": "POST",
+  "path": "/api/v1/checkout",
+  "body": "{\"amount\":1000}",
+  "nonce": "demo-unique-nonce"
+}
+```
+
+The `body` value must be the exact wire body that will be sent to the signed API route. The response includes `X-API-Key`, `X-API-Timestamp`, `X-API-Nonce`, and `X-API-Signature` headers plus the exact body string.
+
+Webhook signer request:
+
+```json
+{
+  "body": "{\"event_id\":\"provider-event-123\",\"event_type\":\"payment.paid\"}"
+}
+```
+
+The response includes `X-Payment-Timestamp` and `X-Payment-Signature`. Copy the returned body without changing whitespace or field ordering before sending it to the webhook endpoint.
+
 
 A trusted integration implementation should test at least:
 

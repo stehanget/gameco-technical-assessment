@@ -94,6 +94,25 @@ func TestRequireAPISignatureRejectsTamperingAndNonceReplay(t *testing.T) {
 	}
 }
 
+func TestSignAPISignatureRejectsInvalidTimestampAndRotation(t *testing.T) {
+	cfg := apiSignatureTestConfig("demo", "demo-secret")
+	for _, test := range []struct {
+		name          string
+		timestamp     string
+		rotationCount int64
+	}{
+		{name: "negative timestamp", timestamp: "-1", rotationCount: cfg.RotationCount},
+		{name: "zero rotation count", timestamp: "1792584000", rotationCount: 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cfg.RotationCount = test.rotationCount
+			if _, err := SignAPISignature(cfg, "demo", test.timestamp, "nonce", "GET", "/health", nil); err == nil {
+				t.Fatal("expected signing error")
+			}
+		})
+	}
+}
+
 func apiSignatureTestConfig(keyID, secret string) config.APISignatureConfig {
 	rotationCount := int64(config.DefaultAPISignatureRotationCount)
 	if configured := strings.TrimSpace(os.Getenv("APP_API_SIGNATURE_ROTATION_COUNT")); configured != "" {

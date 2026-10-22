@@ -609,6 +609,70 @@ definitions:
     - seller_total_amount
     - status
     type: object
+  devtools.APISignatureRequest:
+    properties:
+      body:
+        type: string
+      key_id:
+        type: string
+      method:
+        type: string
+      nonce:
+        type: string
+      path:
+        type: string
+      timestamp:
+        type: integer
+    required:
+    - key_id
+    - method
+    - path
+    type: object
+  devtools.Response:
+    properties:
+      data:
+        $ref: '#/definitions/devtools.SignatureResponse'
+      meta:
+        $ref: '#/definitions/httpx.Meta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  devtools.SignatureResponse:
+    properties:
+      body:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      nonce:
+        type: string
+      signature:
+        type: string
+      timestamp:
+        type: integer
+      type:
+        type: string
+    required:
+    - body
+    - headers
+    - signature
+    - timestamp
+    - type
+    type: object
+  devtools.WebhookSignatureRequest:
+    properties:
+      body:
+        type: string
+      timestamp:
+        type: integer
+    required:
+    - body
+    type: object
   example.CreateRequest:
     properties:
       name:
@@ -1201,6 +1265,60 @@ paths:
       summary: Checkout active cart
       tags:
       - checkout
+  /api/v1/dev/signatures/api:
+    post:
+      consumes:
+      - application/json
+      description: Development-only helper. Generates request-signing headers without
+        returning the configured secret.
+      parameters:
+      - description: API signature input; body must be the exact wire body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devtools.APISignatureRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devtools.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Generate an API request signature for development
+      tags:
+      - development-tools
+  /api/v1/dev/signatures/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Development-only helper. Generates payment webhook headers without
+        returning the configured webhook secret.
+      parameters:
+      - description: Webhook signature input; body must be the exact wire body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/devtools.WebhookSignatureRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/devtools.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Generate a payment webhook signature for development
+      tags:
+      - development-tools
   /api/v1/examples:
     get:
       description: Returns example records from the boilerplate module
@@ -2077,3 +2195,9 @@ tags:
   name: categories
 - description: Authenticated seller product management with ownership authorization.
   name: seller-products
+- description: Authenticated seller order reads scoped to the seller's own order items
+    and subtotals.
+  name: seller-orders
+- description: Development-only signature generators for trusted API requests and
+    payment webhook demonstrations.
+  name: development-tools

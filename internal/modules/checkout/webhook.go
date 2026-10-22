@@ -59,7 +59,24 @@ func decodePaymentWebhook(body []byte) (PaymentWebhookRequest, error) {
 var (
 	errWebhookSignature = errors.New("invalid payment webhook signature")
 	errWebhookTimestamp = errors.New("invalid payment webhook timestamp")
+	errWebhookSecret    = errors.New("payment webhook secret is required")
 )
+
+func SignWebhookSignature(secret, timestamp string, body []byte) (string, error) {
+	if strings.TrimSpace(secret) == "" {
+		return "", errWebhookSecret
+	}
+	if _, err := strconv.ParseInt(timestamp, 10, 64); err != nil {
+		return "", errWebhookTimestamp
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(webhookSignatureMessage(timestamp, body))
+	return hex.EncodeToString(mac.Sum(nil)), nil
+}
+
+func webhookSignatureMessage(timestamp string, body []byte) []byte {
+	return append([]byte(timestamp+"."), body...)
+}
 
 func verifyWebhookSignature(secret, timestamp, suppliedSignature string, body []byte, now time.Time) error {
 	seconds, err := strconv.ParseInt(timestamp, 10, 64)
@@ -75,8 +92,7 @@ func verifyWebhookSignature(secret, timestamp, suppliedSignature string, body []
 	if err != nil {
 		return errWebhookSignature
 	}
-	message := timestamp + "."
-	messageBytes := append([]byte(message), body...)
+	messageBytes := webhookSignatureMessage(timestamp, body)
 	hash := sha256.New
 	mac := hmac.New(hash, []byte(secret))
 	_, _ = mac.Write(messageBytes)

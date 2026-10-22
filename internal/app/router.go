@@ -5,6 +5,7 @@ import (
 	modulecart "gameco-technical-assessment/internal/modules/cart"
 	modulecatalog "gameco-technical-assessment/internal/modules/catalog"
 	modulecheckout "gameco-technical-assessment/internal/modules/checkout"
+	moduledevtools "gameco-technical-assessment/internal/modules/devtools"
 	modulehealth "gameco-technical-assessment/internal/modules/health"
 	"gameco-technical-assessment/internal/platform/middleware"
 
@@ -45,6 +46,13 @@ func NewRouter(container *Container) *gin.Engine {
 	authService := moduleauth.NewService(authRepository, container.Redis, container.JWTSigner, container.Config.App)
 	actorResolver := moduleauth.NewActorResolver(authService)
 
+	if container.Config.App.Env == "development" {
+		moduledevtools.RegisterRoutes(api, moduledevtools.RouteDependencies{
+			APISignature:         container.Config.App.APISignature,
+			PaymentWebhookSecret: container.Config.App.PaymentWebhookSecret,
+			Clock:                container.Clock,
+		})
+	}
 	moduleauth.RegisterRoutes(api, moduleauth.RouteDependencies{
 		Service:      authService,
 		Redis:        container.Redis,

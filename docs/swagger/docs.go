@@ -743,6 +743,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/dev/signatures/api": {
+            "post": {
+                "description": "Development-only helper. Generates request-signing headers without returning the configured secret.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "development-tools"
+                ],
+                "summary": "Generate an API request signature for development",
+                "parameters": [
+                    {
+                        "description": "API signature input; body must be the exact wire body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devtools.APISignatureRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devtools.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dev/signatures/webhook": {
+            "post": {
+                "description": "Development-only helper. Generates payment webhook headers without returning the configured webhook secret.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "development-tools"
+                ],
+                "summary": "Generate a payment webhook signature for development",
+                "parameters": [
+                    {
+                        "description": "Webhook signature input; body must be the exact wire body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devtools.WebhookSignatureRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/devtools.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/examples": {
             "get": {
                 "description": "Returns example records from the boilerplate module",
@@ -2872,6 +2952,100 @@ const docTemplate = `{
                 }
             }
         },
+        "devtools.APISignatureRequest": {
+            "type": "object",
+            "required": [
+                "key_id",
+                "method",
+                "path"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "nonce": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "devtools.Response": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/devtools.SignatureResponse"
+                },
+                "meta": {
+                    "$ref": "#/definitions/httpx.Meta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "devtools.SignatureResponse": {
+            "type": "object",
+            "required": [
+                "body",
+                "headers",
+                "signature",
+                "timestamp",
+                "type"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "nonce": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "devtools.WebhookSignatureRequest": {
+            "type": "object",
+            "required": [
+                "body"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
         "example.CreateRequest": {
             "type": "object",
             "required": [
@@ -3078,6 +3252,14 @@ const docTemplate = `{
         {
             "description": "Authenticated seller product management with ownership authorization.",
             "name": "seller-products"
+        },
+        {
+            "description": "Authenticated seller order reads scoped to the seller's own order items and subtotals.",
+            "name": "seller-orders"
+        },
+        {
+            "description": "Development-only signature generators for trusted API requests and payment webhook demonstrations.",
+            "name": "development-tools"
         }
     ]
 }`

@@ -125,15 +125,37 @@ func parseAPISignature(value, version string) ([]byte, error) {
 	return decoded, nil
 }
 
-func validAPISignature(cfg config.APISignatureConfig, secret, timestamp, nonce, method, path string, body, provided []byte) bool {
+func SignAPISignature(cfg config.APISignatureConfig, keyID, timestamp, nonce, method, path string, body []byte) (string, error) {
+	secret, ok := cfg.Keys[keyID]
+	if !ok || strings.TrimSpace(keyID) == "" {
+		return "", errors.New("unknown API signing key")
+	}
+	seconds, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil || seconds < 0 {
+		return "", errors.New("invalid API signing timestamp")
+	}
+	if strings.TrimSpace(nonce) == "" || strings.TrimSpace(method) == "" || strings.TrimSpace(path) == "" {
+		return "", errors.New("API signing fields are required")
+	}
+	if cfg.RotationCount < 1 || cfg.RotationCount > config.MaxAPISignatureRotationCount {
+		return "", errors.New("invalid API signing rotation count")
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(apiSignatureMessage(cfg, timestamp, nonce, method, path, body))
+	return cfg.Version + "=" + hex.EncodeToString(mac.Sum(nil)), nil
+}
+
+func apiSignatureMessage(cfg config.APISignatureConfig, timestamp, nonce, method, path string, body []byte) []byte {
 	bodyHash := sha256.Sum256(body)
 	fields := []string{method, path, timestamp, nonce, hex.EncodeToString(bodyHash[:])}
 	rotation := parseTimestampRotation(timestamp, cfg.RotationCount)
 	rotated := append(append([]string{}, fields[rotation:]...), fields[:rotation]...)
-	message := strings.Join(rotated, "|")
+	return []byte(strings.Join(rotated, "|"))
+}
 
+func validAPISignature(cfg config.APISignatureConfig, secret, timestamp, nonce, method, path string, body, provided []byte) bool {
 	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write([]byte(message))
+	_, _ = mac.Write(apiSignatureMessage(cfg, timestamp, nonce, method, path, body))
 	return hmac.Equal(provided, mac.Sum(nil))
 }
 

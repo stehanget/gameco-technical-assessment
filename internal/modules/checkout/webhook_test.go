@@ -31,3 +31,9 @@ func TestVerifyWebhookSignature(t *testing.T) {
 		t.Fatalf("stale timestamp: expected timestamp error, got %v", err)
 	}
 }
+
+func TestSignWebhookSignatureRejectsMissingSecret(t *testing.T) {
+	if _, err := SignWebhookSignature(" ", "1792584000", []byte(`{"event_id":"event-1"}`)); err != errWebhookSecret {
+		t.Fatalf("expected missing secret error, got %v", err)
+	}
+}
