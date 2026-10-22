@@ -99,6 +99,30 @@ func TestCheckoutIsIdempotentAndReservesStock(t *testing.T) {
 		t.Fatalf("unexpected order detail: %+v", detailEnvelope.Data)
 	}
 
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/orders?per_page=1", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listResponse := httptest.NewRecorder()
+	router.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("buyer order list: expected 200, got %d: %s", listResponse.Code, listResponse.Body.String())
+	}
+	var listEnvelope struct {
+		Data []struct {
+			PublicID         string `json:"public_id"`
+			PaymentReference string `json:"payment_reference"`
+			TotalAmount      int64  `json:"total_amount"`
+			Items            []struct {
+				Quantity int `json:"quantity"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &listEnvelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(listEnvelope.Data) != 1 || listEnvelope.Data[0].PublicID != firstEnvelope.Data.PublicID || listEnvelope.Data[0].PaymentReference != firstEnvelope.Data.PaymentReference || len(listEnvelope.Data[0].Items) != 1 || listEnvelope.Data[0].Items[0].Quantity != 1 {
+		t.Fatalf("unexpected buyer order list: %s", listResponse.Body.String())
+	}
+
 	otherBuyerToken := e2ERegister(t, router)
 	foreignRequest := httptest.NewRequest(http.MethodGet, "/api/v1/orders/"+firstEnvelope.Data.PublicID, nil)
 	foreignRequest.Header.Set("Authorization", "Bearer "+otherBuyerToken)
@@ -206,6 +230,47 @@ func TestSellerOrdersAreScopedToSellerItems(t *testing.T) {
 	}
 	if len(ordersPayload.Data) != 1 || ordersPayload.Meta.HasMore || ordersPayload.Meta.NextCursor != nil || ordersPayload.Data[0].PublicID != checkoutPayload.Data.PublicID || len(ordersPayload.Data[0].Items) != 1 || ordersPayload.Data[0].Items[0].ProductPublicID != products.Data[0].PublicID {
 		t.Fatalf("unexpected seller orders response: %s", ordersResponse.Body.String())
+	}
+
+	detailRequest := httptest.NewRequest(http.MethodGet, "/api/v1/seller/orders/"+checkoutPayload.Data.PublicID, nil)
+	detailRequest.Header.Set("Authorization", "Bearer "+sellerToken)
+	detailResponse := httptest.NewRecorder()
+	router.ServeHTTP(detailResponse, detailRequest)
+	if detailResponse.Code != http.StatusOK {
+		t.Fatalf("seller order detail: expected 200, got %d: %s", detailResponse.Code, detailResponse.Body.String())
+	}
+	var sellerDetail struct {
+		Data struct {
+			PublicID          string `json:"public_id"`
+			SellerTotalAmount int64  `json:"seller_total_amount"`
+			Items             []struct {
+				ProductPublicID string `json:"product_public_id"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(detailResponse.Body.Bytes(), &sellerDetail); err != nil {
+		t.Fatal(err)
+	}
+	if sellerDetail.Data.PublicID != checkoutPayload.Data.PublicID || sellerDetail.Data.SellerTotalAmount <= 0 || len(sellerDetail.Data.Items) != 1 || sellerDetail.Data.Items[0].ProductPublicID != products.Data[0].PublicID || bytes.Contains(detailResponse.Body.Bytes(), []byte(`"total_amount"`)) {
+		t.Fatalf("unexpected seller order detail: %s", detailResponse.Body.String())
+	}
+
+	foreignDetailRequest := httptest.NewRequest(http.MethodGet, "/api/v1/seller/orders/"+checkoutPayload.Data.PublicID, nil)
+	foreignDetailRequest.Header.Set("Authorization", "Bearer "+buyerToken)
+	foreignDetailResponse := httptest.NewRecorder()
+	router.ServeHTTP(foreignDetailResponse, foreignDetailRequest)
+	if foreignDetailResponse.Code != http.StatusNotFound {
+		t.Fatalf("buyer seller-order detail: expected 404, got %d: %s", foreignDetailResponse.Code, foreignDetailResponse.Body.String())
+	}
+
+	for _, publicID := range []string{"not-a-uuid", "00000000-0000-0000-0000-000000000000"} {
+		unknownDetailRequest := httptest.NewRequest(http.MethodGet, "/api/v1/seller/orders/"+publicID, nil)
+		unknownDetailRequest.Header.Set("Authorization", "Bearer "+sellerToken)
+		unknownDetailResponse := httptest.NewRecorder()
+		router.ServeHTTP(unknownDetailResponse, unknownDetailRequest)
+		if unknownDetailResponse.Code != http.StatusNotFound {
+			t.Fatalf("seller order detail %q: expected 404, got %d: %s", publicID, unknownDetailResponse.Code, unknownDetailResponse.Body.String())
+		}
 	}
 }
 

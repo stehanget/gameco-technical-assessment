@@ -456,6 +456,39 @@ definitions:
     - subtotal_amount
     - unit_price_amount
     type: object
+  checkout.OrderListMeta:
+    properties:
+      has_more:
+        type: boolean
+      next_cursor:
+        type: string
+        x-nullable: true
+      per_page:
+        type: integer
+      request_id:
+        type: string
+        x-nullable: true
+    required:
+    - has_more
+    - next_cursor
+    - per_page
+    - request_id
+    type: object
+  checkout.OrderListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/checkout.OrderResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/checkout.OrderListMeta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
   checkout.OrderResponse:
     properties:
       created_at:
@@ -1244,6 +1277,93 @@ paths:
       summary: Enqueue example creation
       tags:
       - examples
+  /api/v1/orders:
+    get:
+      description: Lists complete order snapshots owned by the authenticated buyer.
+      parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
+      - description: Search order public ID or product name
+        in: query
+        name: q
+        type: string
+      - description: Order status filter
+        in: query
+        name: status
+        type: string
+      - description: Payment status filter
+        in: query
+        name: payment_status
+        type: string
+      - default: created_at
+        description: Sort field
+        enum:
+        - created_at
+        - total_amount
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Opaque cursor returned by the previous response
+        in: query
+        name: cursor
+        type: string
+      - default: 20
+        description: Number of records per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/checkout.OrderListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List buyer orders
+      tags:
+      - orders
   /api/v1/orders/{order_public_id}:
     get:
       description: Returns an order and its immutable item snapshots for the authenticated
@@ -1512,6 +1632,61 @@ paths:
       security:
       - BearerAuth: []
       summary: List seller orders
+      tags:
+      - seller-orders
+  /api/v1/seller/orders/{order_public_id}:
+    get:
+      description: Returns the authenticated seller's item snapshots and subtotal
+        for an order. Orders without the seller's items are not disclosed.
+      parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
+      - description: Order public identifier
+        format: uuid
+        in: path
+        name: order_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/checkout.SellerOrderResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get seller order detail
       tags:
       - seller-orders
   /api/v1/seller/products:

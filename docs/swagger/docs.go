@@ -859,6 +859,136 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists complete order snapshots owned by the authenticated buyer.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "List buyer orders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search order public ID or product name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order status filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Payment status filter",
+                        "name": "payment_status",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "created_at",
+                            "total_amount"
+                        ],
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Sort field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort direction",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque cursor returned by the previous response",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of records per page",
+                        "name": "per_page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/checkout.OrderListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orders/{order_public_id}": {
             "get": {
                 "security": [
@@ -1245,6 +1375,89 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/seller/orders/{order_public_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated seller's item snapshots and subtotal for an order. Orders without the seller's items are not disclosed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seller-orders"
+                ],
+                "summary": "Get seller order detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trusted integration key ID",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unix timestamp in seconds",
+                        "name": "X-API-Timestamp",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request nonce",
+                        "name": "X-API-Nonce",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Versioned HMAC signature, for example v1=\u003chex\u003e",
+                        "name": "X-API-Signature",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order public identifier",
+                        "name": "order_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/checkout.SellerOrderResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/httpx.ErrorResponse"
                         }
@@ -2440,6 +2653,53 @@ const docTemplate = `{
                 },
                 "unit_price_amount": {
                     "type": "integer"
+                }
+            }
+        },
+        "checkout.OrderListMeta": {
+            "type": "object",
+            "required": [
+                "has_more",
+                "next_cursor",
+                "per_page",
+                "request_id"
+            ],
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "next_cursor": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "request_id": {
+                    "type": "string",
+                    "x-nullable": true
+                }
+            }
+        },
+        "checkout.OrderListResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "meta",
+                "success"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/checkout.OrderResponse"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/checkout.OrderListMeta"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },

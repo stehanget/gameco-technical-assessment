@@ -184,6 +184,137 @@ func (r *Repository) FindOrderByPublicID(ctx context.Context, buyerID uint, publ
 	return loadOrder(r.db.WithContext(ctx), order.ID)
 }
 
+type orderListParams struct {
+	Query         string
+	Status        string
+	PaymentStatus string
+	SortBy        string
+	SortOrder     string
+	PerPage       int
+	Cursor        *cursorPosition
+}
+
+type orderSummary struct {
+	OrderID          uint      `gorm:"column:order_id"`
+	PublicID         uuid.UUID `gorm:"column:public_id"`
+	Status           string    `gorm:"column:status"`
+	TotalAmount      int64     `gorm:"column:total_amount"`
+	PaymentReference string    `gorm:"column:payment_reference"`
+	PaymentStatus    string    `gorm:"column:payment_status"`
+	CreatedAt        time.Time `gorm:"column:created_at"`
+}
+
+type orderItemListView struct {
+	OrderID         uint      `gorm:"column:order_id"`
+	ProductPublicID uuid.UUID `gorm:"column:product_public_id"`
+	ProductName     string    `gorm:"column:product_name"`
+	UnitPriceAmount int64     `gorm:"column:unit_price_amount"`
+	Quantity        int       `gorm:"column:quantity"`
+	SubtotalAmount  int64     `gorm:"column:subtotal_amount"`
+}
+
+func (r *Repository) ListOrdersByBuyer(ctx context.Context, buyerID uint, params orderListParams) ([]orderSummary, []orderItemListView, bool, error) {
+	base := r.db.WithContext(ctx).Table("orders o").
+		Joins("JOIN order_items oi ON oi.order_id = o.id").
+		Joins("JOIN payments pay ON pay.order_id = o.id").
+		Where("o.buyer_id = ?", buyerID)
+	if params.Query != "" {
+		pattern := "%" + escapeLike(strings.ToLower(params.Query)) + "%"
+		base = base.Where(`
+			(
+				LOWER(oi.product_name) LIKE ? ESCAPE '\\'
+				OR CAST(o.public_id AS TEXT) LIKE ?
+			)
+		`, pattern, pattern)
+	}
+	if params.Status != "" {
+		base = base.Where("o.status = ?", params.Status)
+	}
+	if params.PaymentStatus != "" {
+		base = base.Where("pay.status = ?", params.PaymentStatus)
+	}
+	if params.Cursor != nil {
+		condition, args, err := orderCursorCondition(params.SortBy, params.SortOrder, *params.Cursor)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		base = base.Where(condition, args...)
+	}
+	sortColumn := "o.created_at"
+	if params.SortBy == "total_amount" {
+		sortColumn = "o.total_amount"
+	}
+	var orders []orderSummary
+	if err := base.Select(`
+			o.id AS order_id,
+			o.public_id,
+			o.status,
+			o.total_amount,
+			o.payment_reference,
+			pay.status AS payment_status,
+			o.created_at
+		`).
+		Group("o.id, o.public_id, o.status, o.total_amount, o.payment_reference, pay.status, o.created_at").
+		Order(fmt.Sprintf("%s %s, o.public_id ASC", sortColumn, params.SortOrder)).
+		Limit(params.PerPage + 1).Find(&orders).Error; err != nil {
+		return nil, nil, false, err
+	}
+	hasMore := len(orders) > params.PerPage
+	if hasMore {
+		orders = orders[:params.PerPage]
+	}
+	if len(orders) == 0 {
+		return orders, []orderItemListView{}, false, nil
+	}
+	orderIDs := make([]uint, 0, len(orders))
+	for _, order := range orders {
+		orderIDs = append(orderIDs, order.OrderID)
+	}
+	var items []orderItemListView
+	if err := r.db.WithContext(ctx).Table("order_items oi").
+		Select(`
+			oi.order_id,
+			p.public_id AS product_public_id,
+			oi.product_name,
+			oi.unit_price_amount,
+			oi.quantity,
+			oi.subtotal_amount
+		`).
+		Joins("JOIN products p ON p.id = oi.product_id").
+		Where("oi.order_id IN ?", orderIDs).
+		Order("oi.order_id, oi.id").Find(&items).Error; err != nil {
+		return nil, nil, false, err
+	}
+	return orders, items, hasMore, nil
+}
+
+func orderCursorCondition(sortBy, sortOrder string, cursor cursorPosition) (string, []any, error) {
+	column := "o.created_at"
+	var value any
+	switch sortBy {
+	case "created_at":
+		parsed, err := timestamp.Parse(cursor.Value)
+		if err != nil {
+			return "", nil, err
+		}
+		value = parsed.Time
+	case "total_amount":
+		parsed, err := strconv.ParseInt(cursor.Value, 10, 64)
+		if err != nil {
+			return "", nil, err
+		}
+		column = "o.total_amount"
+		value = parsed
+	default:
+		return "", nil, errors.New("unsupported order sort")
+	}
+	operator := ">"
+	if sortOrder == "desc" {
+		operator = "<"
+	}
+	return fmt.Sprintf("(%s %s ? OR (%s = ? AND o.public_id > ?))", column, operator, column), []any{value, value, cursor.Tie}, nil
+}
+
 type sellerOrderListParams struct {
 	Query         string
 	Status        string
@@ -210,6 +341,45 @@ type sellerOrderItemView struct {
 	UnitPriceAmount int64     `gorm:"column:unit_price_amount"`
 	Quantity        int       `gorm:"column:quantity"`
 	SubtotalAmount  int64     `gorm:"column:subtotal_amount"`
+}
+
+func (r *Repository) FindOrderBySellerPublicID(ctx context.Context, sellerID uint, publicID uuid.UUID) (sellerOrderSummary, []sellerOrderItemView, error) {
+	var order sellerOrderSummary
+	if err := r.db.WithContext(ctx).Table("orders o").
+		Joins("JOIN order_items oi ON oi.order_id = o.id AND oi.seller_id = ?", sellerID).
+		Joins("JOIN payments pay ON pay.order_id = o.id").
+		Where("o.public_id = ?", publicID).
+		Select(`
+			o.id AS order_id,
+			o.public_id,
+			o.status,
+			pay.status AS payment_status,
+			SUM(oi.subtotal_amount) AS seller_total_amount,
+			o.created_at
+		`).
+		Group("o.id, o.public_id, o.status, pay.status, o.created_at").
+		Limit(1).Find(&order).Error; err != nil {
+		return sellerOrderSummary{}, nil, err
+	}
+	if order.OrderID == 0 {
+		return sellerOrderSummary{}, nil, gorm.ErrRecordNotFound
+	}
+	var items []sellerOrderItemView
+	if err := r.db.WithContext(ctx).Table("order_items oi").
+		Select(`
+			oi.order_id,
+			p.public_id AS product_public_id,
+			oi.product_name,
+			oi.unit_price_amount,
+			oi.quantity,
+			oi.subtotal_amount
+		`).
+		Joins("JOIN products p ON p.id = oi.product_id").
+		Where("oi.seller_id = ? AND oi.order_id = ?", sellerID, order.OrderID).
+		Order("oi.id").Find(&items).Error; err != nil {
+		return sellerOrderSummary{}, nil, err
+	}
+	return order, items, nil
 }
 
 func (r *Repository) ListOrdersBySeller(ctx context.Context, sellerID uint, params sellerOrderListParams) ([]sellerOrderSummary, []sellerOrderItemView, bool, error) {

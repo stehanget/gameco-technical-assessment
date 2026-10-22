@@ -41,6 +41,7 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	group.Use(middleware.RequireAPISignature(deps.APISignature, deps.Redis))
 	group.Use(middleware.RequireRoles(role.Buyer))
 	group.POST("/checkout", handler.Create)
+	group.GET("/orders", handler.Orders)
 	group.GET("/orders/:order_public_id", handler.Detail)
 
 	sellerOrders := router.Group("/seller/orders")
@@ -52,6 +53,7 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	sellerOrders.Use(middleware.RequireRoles(role.Seller))
 	sellerOrders.Use(middleware.RequirePermissions(permission.SellerOrderRead))
 	sellerOrders.GET("", handler.SellerOrders)
+	sellerOrders.GET("/:order_public_id", handler.SellerOrderDetail)
 
 	public := router.Group("")
 	public.Use(middleware.RateLimit(deps.Redis, middleware.RateLimitPolicySet{

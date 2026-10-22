@@ -82,6 +82,143 @@ func (s *Service) Detail(ctx context.Context, actor auth.Actor, publicID string)
 	return response, nil
 }
 
+func (s *Service) ListOrders(ctx context.Context, actor auth.Actor, request OrderListQuery) (orderListResult, error) {
+	params, cursor, err := normalizeOrderQuery(request)
+	if err != nil {
+		return orderListResult{}, err
+	}
+	params.Cursor = cursor
+
+	orders, items, hasMore, err := s.repository.ListOrdersByBuyer(ctx, actor.UserID, params)
+	if err != nil {
+		return orderListResult{}, err
+	}
+	return mapOrderListResult(orders, items, params, hasMore)
+}
+
+func normalizeOrderQuery(request OrderListQuery) (orderListParams, *cursorPosition, error) {
+	sortBy := request.SortBy
+	if sortBy == "" {
+		sortBy = defaultSortBy
+	}
+	if sortBy != "created_at" && sortBy != "total_amount" {
+		return orderListParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
+	}
+	sortOrder := request.SortOrder
+	if sortOrder == "" {
+		sortOrder = defaultSortOrder
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		return orderListParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
+	}
+	perPage := request.PerPage
+	if perPage == 0 {
+		perPage = defaultPerPage
+	}
+	if perPage < 1 || perPage > maxPerPage || len(request.Query) > 255 || len(request.Status) > 64 || len(request.PaymentStatus) > 64 {
+		return orderListParams{}, nil, faults.New(errorconst.InvalidRequest, nil)
+	}
+	params := orderListParams{
+		Query: strings.TrimSpace(request.Query), Status: strings.TrimSpace(request.Status),
+		PaymentStatus: strings.TrimSpace(request.PaymentStatus), SortBy: sortBy,
+		SortOrder: sortOrder, PerPage: perPage,
+	}
+	if request.Cursor == "" {
+		return params, nil, nil
+	}
+	cursor, err := decodeCursor(request.Cursor)
+	if err != nil || cursor.SortBy != sortBy || cursor.SortOrder != sortOrder || cursor.Filter != orderFilterFingerprint(params) {
+		return orderListParams{}, nil, faults.New(errorconst.InvalidRequest, err)
+	}
+	return params, &cursor, nil
+}
+
+func orderFilterFingerprint(params orderListParams) string {
+	return pagination.FilterFingerprint(map[string]string{
+		"q": params.Query, "status": params.Status, "payment_status": params.PaymentStatus,
+		"sort_by": params.SortBy, "sort_order": params.SortOrder,
+	})
+}
+
+type orderListResult struct {
+	Items      []OrderResponse
+	PerPage    int
+	HasMore    bool
+	NextCursor *string
+}
+
+func mapOrderListResult(orders []orderSummary, items []orderItemListView, params orderListParams, hasMore bool) (orderListResult, error) {
+	itemsByOrder := make(map[uint][]OrderItemResponse)
+	for _, item := range items {
+		itemsByOrder[item.OrderID] = append(itemsByOrder[item.OrderID], OrderItemResponse{
+			ProductPublicID: item.ProductPublicID, ProductName: item.ProductName,
+			UnitPriceAmount: item.UnitPriceAmount, Quantity: item.Quantity, SubtotalAmount: item.SubtotalAmount,
+		})
+	}
+	result := make([]OrderResponse, 0, len(orders))
+	for _, order := range orders {
+		orderItems := itemsByOrder[order.OrderID]
+		if orderItems == nil {
+			orderItems = []OrderItemResponse{}
+		}
+		result = append(result, OrderResponse{
+			PublicID: order.PublicID, Status: order.Status, TotalAmount: order.TotalAmount,
+			PaymentStatus: order.PaymentStatus, Items: orderItems, CreatedAt: timestamp.New(order.CreatedAt),
+			PaymentReference: order.PaymentReference,
+		})
+	}
+	var nextCursor *string
+	if hasMore && len(orders) > 0 {
+		last := orders[len(orders)-1]
+		value := timestamp.New(last.CreatedAt).String()
+		if params.SortBy == "total_amount" {
+			value = strconv.FormatInt(last.TotalAmount, 10)
+		}
+		encoded, err := encodeCursor(cursorPosition{Version: 1, SortBy: params.SortBy, SortOrder: params.SortOrder, Filter: orderFilterFingerprint(params), Value: value, Tie: last.PublicID.String()})
+		if err != nil {
+			return orderListResult{}, err
+		}
+		nextCursor = &encoded
+	}
+	return orderListResult{Items: result, PerPage: params.PerPage, HasMore: hasMore, NextCursor: nextCursor}, nil
+}
+
+func (s *Service) SellerOrderDetail(ctx context.Context, actor auth.Actor, publicID string) (SellerOrderResponse, error) {
+	parsed, err := uuid.Parse(publicID)
+	if err != nil {
+		return SellerOrderResponse{}, faults.New(errorconst.OrderNotFound, err)
+	}
+	order, items, err := s.repository.FindOrderBySellerPublicID(ctx, actor.UserID, parsed)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return SellerOrderResponse{}, faults.New(errorconst.OrderNotFound, err)
+	}
+	if err != nil {
+		return SellerOrderResponse{}, err
+	}
+	return mapSellerOrderResponse(order, items), nil
+}
+
+func mapSellerOrderResponse(order sellerOrderSummary, items []sellerOrderItemView) SellerOrderResponse {
+	responseItems := make([]SellerOrderItemResponse, 0, len(items))
+	for _, item := range items {
+		responseItems = append(responseItems, SellerOrderItemResponse{
+			ProductPublicID: item.ProductPublicID, ProductName: item.ProductName,
+			UnitPriceAmount: item.UnitPriceAmount, Quantity: item.Quantity, SubtotalAmount: item.SubtotalAmount,
+		})
+	}
+	return sellerOrderResponseWithItems(order, responseItems)
+}
+
+func sellerOrderResponseWithItems(order sellerOrderSummary, items []SellerOrderItemResponse) SellerOrderResponse {
+	if items == nil {
+		items = []SellerOrderItemResponse{}
+	}
+	return SellerOrderResponse{
+		PublicID: order.PublicID, Status: order.Status, SellerTotalAmount: order.SellerTotalAmount,
+		PaymentStatus: order.PaymentStatus, Items: items, CreatedAt: timestamp.New(order.CreatedAt),
+	}
+}
+
 func (s *Service) ListSellerOrders(ctx context.Context, actor auth.Actor, request SellerOrderListQuery) (sellerOrderListResult, error) {
 	params, cursor, err := normalizeSellerOrderQuery(request)
 	if err != nil {
@@ -107,18 +244,7 @@ func (s *Service) ListSellerOrders(ctx context.Context, actor auth.Actor, reques
 
 	result := make([]SellerOrderResponse, 0, len(orders))
 	for _, order := range orders {
-		orderItems := itemsByOrder[order.OrderID]
-		if orderItems == nil {
-			orderItems = []SellerOrderItemResponse{}
-		}
-		result = append(result, SellerOrderResponse{
-			PublicID:          order.PublicID,
-			Status:            order.Status,
-			SellerTotalAmount: order.SellerTotalAmount,
-			PaymentStatus:     order.PaymentStatus,
-			Items:             orderItems,
-			CreatedAt:         timestamp.New(order.CreatedAt),
-		})
+		result = append(result, sellerOrderResponseWithItems(order, itemsByOrder[order.OrderID]))
 	}
 
 	var nextCursor *string

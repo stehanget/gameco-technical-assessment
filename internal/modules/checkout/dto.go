@@ -31,7 +31,7 @@ type OrderItemResponse struct {
 	SubtotalAmount  int64     `json:"subtotal_amount" binding:"required"`
 }
 
-type SellerOrderListQuery struct {
+type OrderListQuery struct {
 	Query         string `form:"q"`
 	Status        string `form:"status"`
 	PaymentStatus string `form:"payment_status"`
@@ -39,6 +39,21 @@ type SellerOrderListQuery struct {
 	SortOrder     string `form:"sort_order"`
 	Cursor        string `form:"cursor"`
 	PerPage       int    `form:"per_page"`
+}
+
+type SellerOrderListQuery = OrderListQuery
+
+type OrderListMeta struct {
+	RequestID  *string `json:"request_id" binding:"required" extensions:"x-nullable"`
+	PerPage    int     `json:"per_page" binding:"required"`
+	HasMore    bool    `json:"has_more" binding:"required"`
+	NextCursor *string `json:"next_cursor" binding:"required" extensions:"x-nullable"`
+}
+
+type OrderListResponse struct {
+	Success bool            `json:"success" binding:"required"`
+	Data    []OrderResponse `json:"data" binding:"required"`
+	Meta    OrderListMeta   `json:"meta" binding:"required"`
 }
 
 type SellerOrderResponse struct {
