@@ -518,6 +518,37 @@ definitions:
     - status
     - total_amount
     type: object
+  checkout.PaymentWebhookRequest:
+    properties:
+      amount:
+        example: 125000
+        type: integer
+      event_id:
+        example: evt_20261022_000001
+        type: string
+      event_type:
+        enum:
+        - payment.paid
+        - payment.failed
+        - payment.expired
+        example: payment.paid
+        type: string
+      failure_reason:
+        example: insufficient_funds
+        type: string
+      occurred_at:
+        example: "2026-10-22T11:30:00Z"
+        type: string
+      payment_reference:
+        example: pay_20261022_000001
+        type: string
+    required:
+    - amount
+    - event_id
+    - event_type
+    - occurred_at
+    - payment_reference
+    type: object
   checkout.Response:
     properties:
       data:
@@ -612,16 +643,22 @@ definitions:
   devtools.APISignatureRequest:
     properties:
       body:
+        example: '{"name":"Demo product","price":125000}'
         type: string
       key_id:
+        example: partner-dev-01
         type: string
       method:
+        example: POST
         type: string
       nonce:
+        example: nonce-dev-000001
         type: string
       path:
+        example: /api/v1/products
         type: string
       timestamp:
+        example: 1792668600
         type: integer
     required:
     - key_id
@@ -667,8 +704,10 @@ definitions:
   devtools.WebhookSignatureRequest:
     properties:
       body:
+        example: '{"event_id":"evt_20261022_000001","event_type":"payment.paid","payment_reference":"pay_20261022_000001","amount":125000,"occurred_at":"2026-10-22T11:30:00Z"}'
         type: string
       timestamp:
+        example: 1792668600
         type: integer
     required:
     - body
@@ -2088,6 +2127,13 @@ paths:
         name: X-Payment-Signature
         required: true
         type: string
+      - description: Payment provider webhook payload; signature is calculated from
+          the exact raw JSON body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/checkout.PaymentWebhookRequest'
       produces:
       - application/json
       responses:

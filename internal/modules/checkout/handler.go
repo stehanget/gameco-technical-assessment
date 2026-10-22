@@ -231,6 +231,7 @@ func (h *Handler) SellerOrderDetail(c *gin.Context) {
 // @Produce json
 // @Param X-Payment-Timestamp header string true "Unix timestamp used in the signed message"
 // @Param X-Payment-Signature header string true "Hex HMAC-SHA256 signature"
+// @Param request body PaymentWebhookRequest true "Payment provider webhook payload; signature is calculated from the exact raw JSON body"
 // @Success 204 "Webhook accepted and processed or safely replayed"
 // @Failure 400 {object} httpx.ErrorResponse
 // @Failure 401 {object} httpx.ErrorResponse

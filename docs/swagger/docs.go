@@ -1980,6 +1980,15 @@ const docTemplate = `{
                         "name": "X-Payment-Signature",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "Payment provider webhook payload; signature is calculated from the exact raw JSON body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/checkout.PaymentWebhookRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -2823,6 +2832,47 @@ const docTemplate = `{
                 }
             }
         },
+        "checkout.PaymentWebhookRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "event_id",
+                "event_type",
+                "occurred_at",
+                "payment_reference"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "example": 125000
+                },
+                "event_id": {
+                    "type": "string",
+                    "example": "evt_20261022_000001"
+                },
+                "event_type": {
+                    "type": "string",
+                    "enum": [
+                        "payment.paid",
+                        "payment.failed",
+                        "payment.expired"
+                    ],
+                    "example": "payment.paid"
+                },
+                "failure_reason": {
+                    "type": "string",
+                    "example": "insufficient_funds"
+                },
+                "occurred_at": {
+                    "type": "string",
+                    "example": "2026-10-22T11:30:00Z"
+                },
+                "payment_reference": {
+                    "type": "string",
+                    "example": "pay_20261022_000001"
+                }
+            }
+        },
         "checkout.Response": {
             "type": "object",
             "required": [
@@ -2961,22 +3011,28 @@ const docTemplate = `{
             ],
             "properties": {
                 "body": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "{\"name\":\"Demo product\",\"price\":125000}"
                 },
                 "key_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "partner-dev-01"
                 },
                 "method": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "POST"
                 },
                 "nonce": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "nonce-dev-000001"
                 },
                 "path": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "/api/v1/products"
                 },
                 "timestamp": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1792668600
                 }
             }
         },
@@ -3039,10 +3095,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "body": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "{\"event_id\":\"evt_20261022_000001\",\"event_type\":\"payment.paid\",\"payment_reference\":\"pay_20261022_000001\",\"amount\":125000,\"occurred_at\":\"2026-10-22T11:30:00Z\"}"
                 },
                 "timestamp": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1792668600
                 }
             }
         },

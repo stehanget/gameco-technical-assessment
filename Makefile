@@ -77,7 +77,7 @@ docker-swagger:
 	$(DOCKER_GO_RUN) sh -c 'go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/swagger.go -o docs/swagger'
 
 docker-up:
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d postgres redis api worker
 
 docker-infra-up:
 	$(DOCKER_COMPOSE) up -d postgres redis
@@ -122,7 +122,7 @@ docker-seed:
 	$(DOCKER_COMPOSE) run --rm --no-deps --entrypoint /app/seed api --mode=production
 
 docker-dev-up:
-	$(DOCKER_DEV_COMPOSE) up --build -d
+	$(DOCKER_DEV_COMPOSE) up --build -d postgres redis api worker
 
 docker-dev-down:
 	$(DOCKER_DEV_COMPOSE) down

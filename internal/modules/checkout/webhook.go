@@ -19,12 +19,12 @@ const (
 )
 
 type PaymentWebhookRequest struct {
-	EventID          string `json:"event_id"`
-	EventType        string `json:"event_type"`
-	PaymentReference string `json:"payment_reference"`
-	Amount           int64  `json:"amount"`
-	OccurredAt       string `json:"occurred_at"`
-	FailureReason    string `json:"failure_reason,omitempty"`
+	EventID          string `json:"event_id" binding:"required" example:"evt_20261022_000001"`
+	EventType        string `json:"event_type" binding:"required" enums:"payment.paid,payment.failed,payment.expired" example:"payment.paid"`
+	PaymentReference string `json:"payment_reference" binding:"required" example:"pay_20261022_000001"`
+	Amount           int64  `json:"amount" binding:"required" example:"125000"`
+	OccurredAt       string `json:"occurred_at" binding:"required" example:"2026-10-22T11:30:00Z"`
+	FailureReason    string `json:"failure_reason,omitempty" example:"insufficient_funds"`
 }
 
 func (p PaymentWebhookRequest) Validate() error {
