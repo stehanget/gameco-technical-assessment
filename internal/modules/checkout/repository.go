@@ -5,9 +5,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	catalogconstants "gameco-technical-assessment/internal/constants/catalog"
+	"gameco-technical-assessment/internal/platform/audit"
 	"gameco-technical-assessment/internal/platform/identifier"
 	"gameco-technical-assessment/internal/platform/timestamp"
 
@@ -180,6 +184,145 @@ func (r *Repository) FindOrderByPublicID(ctx context.Context, buyerID uint, publ
 	return loadOrder(r.db.WithContext(ctx), order.ID)
 }
 
+type sellerOrderListParams struct {
+	Query         string
+	Status        string
+	PaymentStatus string
+	SortBy        string
+	SortOrder     string
+	PerPage       int
+	Cursor        *cursorPosition
+}
+
+type sellerOrderSummary struct {
+	OrderID           uint      `gorm:"column:order_id"`
+	PublicID          uuid.UUID `gorm:"column:public_id"`
+	Status            string    `gorm:"column:status"`
+	PaymentStatus     string    `gorm:"column:payment_status"`
+	SellerTotalAmount int64     `gorm:"column:seller_total_amount"`
+	CreatedAt         time.Time `gorm:"column:created_at"`
+}
+
+type sellerOrderItemView struct {
+	OrderID         uint      `gorm:"column:order_id"`
+	ProductPublicID uuid.UUID `gorm:"column:product_public_id"`
+	ProductName     string    `gorm:"column:product_name"`
+	UnitPriceAmount int64     `gorm:"column:unit_price_amount"`
+	Quantity        int       `gorm:"column:quantity"`
+	SubtotalAmount  int64     `gorm:"column:subtotal_amount"`
+}
+
+func (r *Repository) ListOrdersBySeller(ctx context.Context, sellerID uint, params sellerOrderListParams) ([]sellerOrderSummary, []sellerOrderItemView, bool, error) {
+	base := r.db.WithContext(ctx).Table("orders o").
+		Joins("JOIN order_items oi ON oi.order_id = o.id AND oi.seller_id = ?", sellerID).
+		Joins("JOIN payments pay ON pay.order_id = o.id")
+	if params.Query != "" {
+		pattern := "%" + escapeLike(strings.ToLower(params.Query)) + "%"
+		base = base.Where(`
+			(
+				LOWER(oi.product_name) LIKE ? ESCAPE '\\'
+				OR CAST(o.public_id AS TEXT) LIKE ?
+			)
+		`, pattern, pattern)
+	}
+	if params.Status != "" {
+		base = base.Where("o.status = ?", params.Status)
+	}
+	if params.PaymentStatus != "" {
+		base = base.Where("pay.status = ?", params.PaymentStatus)
+	}
+	if params.Cursor != nil {
+		condition, args, err := sellerOrderCursorCondition(params.SortBy, params.SortOrder, *params.Cursor)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		if params.SortBy == "seller_total" {
+			base = base.Having(condition, args...)
+		} else {
+			base = base.Where(condition, args...)
+		}
+	}
+
+	sortColumn := "o.created_at"
+	if params.SortBy == "seller_total" {
+		sortColumn = "SUM(oi.subtotal_amount)"
+	}
+	var orders []sellerOrderSummary
+	if err := base.Select(`
+			o.id AS order_id,
+			o.public_id,
+			o.status,
+			pay.status AS payment_status,
+			SUM(oi.subtotal_amount) AS seller_total_amount,
+			o.created_at
+		`).
+		Group("o.id, o.public_id, o.status, pay.status, o.created_at").
+		Order(fmt.Sprintf("%s %s, o.public_id ASC", sortColumn, params.SortOrder)).
+		Limit(params.PerPage + 1).Find(&orders).Error; err != nil {
+		return nil, nil, false, err
+	}
+	hasMore := len(orders) > params.PerPage
+	if hasMore {
+		orders = orders[:params.PerPage]
+	}
+	if len(orders) == 0 {
+		return orders, []sellerOrderItemView{}, false, nil
+	}
+	orderIDs := make([]uint, 0, len(orders))
+	for _, order := range orders {
+		orderIDs = append(orderIDs, order.OrderID)
+	}
+	var items []sellerOrderItemView
+	if err := r.db.WithContext(ctx).Table("order_items oi").
+		Select(`
+			oi.order_id,
+			p.public_id AS product_public_id,
+			oi.product_name,
+			oi.unit_price_amount,
+			oi.quantity,
+			oi.subtotal_amount
+		`).
+		Joins("JOIN products p ON p.id = oi.product_id").
+		Where("oi.seller_id = ? AND oi.order_id IN ?", sellerID, orderIDs).
+		Order("oi.order_id, oi.id").Find(&items).Error; err != nil {
+		return nil, nil, false, err
+	}
+	return orders, items, hasMore, nil
+}
+
+func sellerOrderCursorCondition(sortBy, sortOrder string, cursor cursorPosition) (string, []any, error) {
+	column := "o.created_at"
+	var value any
+	switch sortBy {
+	case "created_at":
+		parsed, err := timestamp.Parse(cursor.Value)
+		if err != nil {
+			return "", nil, err
+		}
+		value = parsed.Time
+	case "seller_total":
+		parsed, err := strconv.ParseInt(cursor.Value, 10, 64)
+		if err != nil {
+			return "", nil, err
+		}
+		column = "SUM(oi.subtotal_amount)"
+		value = parsed
+	default:
+		return "", nil, errors.New("unsupported seller order sort")
+	}
+	operator := ">"
+	if sortOrder == "desc" {
+		operator = "<"
+	}
+	return fmt.Sprintf("(%s %s ? OR (%s = ? AND o.public_id > ?))", column, operator, column), []any{value, value, cursor.Tie}, nil
+}
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\\`, `\\\\`)
+	value = strings.ReplaceAll(value, "%", `\\%`)
+	return strings.ReplaceAll(value, "_", `\\_`)
+}
+
 func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookRequest, payloadHash string, now time.Time) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		inbox := PaymentWebhookEvent{
@@ -233,6 +376,9 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 				if err := tx.Model(&order).Updates(map[string]any{"status": "paid", "paid_at": now}).Error; err != nil {
 					return err
 				}
+				if err := audit.Write(ctx, tx, audit.Event{EventType: "order.status_changed", AggregateType: "order", AggregateID: order.PublicID.String(), Metadata: map[string]any{"from": "pending_payment", "to": "paid", "source": "payment_webhook"}}); err != nil {
+					return err
+				}
 			case "payment.failed", "payment.expired":
 				updates := map[string]any{"status": map[string]string{"payment.failed": "failed", "payment.expired": "expired"}[event.EventType]}
 				if event.FailureReason != "" {
@@ -252,6 +398,9 @@ func (r *Repository) ProcessWebhook(ctx context.Context, event PaymentWebhookReq
 					orderStatus = "cancelled"
 				}
 				if err := tx.Model(&order).Update("status", orderStatus).Error; err != nil {
+					return err
+				}
+				if err := audit.Write(ctx, tx, audit.Event{EventType: "order.status_changed", AggregateType: "order", AggregateID: order.PublicID.String(), Metadata: map[string]any{"from": "pending_payment", "to": orderStatus, "source": "payment_webhook"}}); err != nil {
 					return err
 				}
 			default:

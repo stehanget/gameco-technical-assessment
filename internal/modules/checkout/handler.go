@@ -90,6 +90,57 @@ func (h *Handler) Detail(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, response)
 }
 
+// SellerOrders godoc
+// @Summary List seller orders
+// @Description Lists orders containing items owned by the authenticated seller. Only the seller's item snapshots and seller subtotal are returned.
+// @Tags seller-orders
+// @Produce json
+// @Param X-API-Key header string false "Trusted integration key ID"
+// @Param X-API-Timestamp header string false "Unix timestamp in seconds"
+// @Param X-API-Nonce header string false "Unique request nonce"
+// @Param X-API-Signature header string false "Versioned HMAC signature, for example v1=<hex>"
+// @Security BearerAuth
+// @Param q query string false "Search order public ID or seller product name"
+// @Param status query string false "Order status filter"
+// @Param payment_status query string false "Payment status filter"
+// @Param sort_by query string false "Sort field" Enums(created_at,seller_total) default(created_at)
+// @Param sort_order query string false "Sort direction" Enums(asc,desc) default(desc)
+// @Param cursor query string false "Opaque cursor returned by the previous response"
+// @Param per_page query int false "Number of records per page" minimum(1) maximum(100) default(20)
+// @Success 200 {object} SellerOrderListResponse
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 401 {object} httpx.ErrorResponse
+// @Failure 403 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/seller/orders [get]
+func (h *Handler) SellerOrders(c *gin.Context) {
+	actor, ok := middleware.ActorFromContext(c)
+	if !ok {
+		httpx.HandleError(c, faults.New(errorconst.AuthMissingContext, nil))
+		return
+	}
+	var request SellerOrderListQuery
+	if err := c.ShouldBindQuery(&request); err != nil {
+		httpx.HandleError(c, faults.New(errorconst.InvalidRequest, err))
+		return
+	}
+	result, err := h.service.ListSellerOrders(c.Request.Context(), actor, request)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	requestID, _ := c.Get(middleware.RequestIDKey)
+	requestIDValue, _ := requestID.(string)
+	var requestIDPointer *string
+	if requestIDValue != "" {
+		requestIDPointer = &requestIDValue
+	}
+	httpx.SuccessWithMeta(c, http.StatusOK, result.Items, SellerOrderListMeta{
+		RequestID: requestIDPointer, PerPage: result.PerPage,
+		HasMore: result.HasMore, NextCursor: result.NextCursor,
+	})
+}
+
 // PaymentWebhook godoc
 // @Summary Receive payment-provider webhook
 // @Description Verifies the simulated provider HMAC signature and freshness window, then atomically applies a payment event with durable replay protection.

@@ -119,6 +119,44 @@ func TestSellerProductRejectsInvalidCreatePayload(t *testing.T) {
 	}
 }
 
+func TestSellerPriceChangeCreatesAuditEvent(t *testing.T) {
+	router, db := newE2ERouterWithDB(t)
+	accessToken := e2ELogin(t, router)
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/seller/products?per_page=1", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+accessToken)
+	listResponse := httptest.NewRecorder()
+	router.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("seller products: expected status 200, got %d: %s", listResponse.Code, listResponse.Body.String())
+	}
+	var products struct {
+		Data []struct {
+			PublicID string `json:"public_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &products); err != nil {
+		t.Fatal(err)
+	}
+	if len(products.Data) != 1 {
+		t.Fatalf("expected one seller product, got %s", listResponse.Body.String())
+	}
+	updateRequest := httptest.NewRequest(http.MethodPatch, "/api/v1/seller/products/"+products.Data[0].PublicID, bytes.NewBufferString(`{"price_amount":7777}`))
+	updateRequest.Header.Set("Authorization", "Bearer "+accessToken)
+	updateRequest.Header.Set("Content-Type", "application/json")
+	updateResponse := httptest.NewRecorder()
+	router.ServeHTTP(updateResponse, updateRequest)
+	if updateResponse.Code != http.StatusOK {
+		t.Fatalf("seller price update: expected status 200, got %d: %s", updateResponse.Code, updateResponse.Body.String())
+	}
+	var auditCount int64
+	if err := db.Raw("SELECT COUNT(*) FROM audit_events WHERE event_type = ? AND aggregate_type = ? AND aggregate_id = ?", "product.price_changed", "product", products.Data[0].PublicID).Scan(&auditCount).Error; err != nil {
+		t.Fatalf("count product audit events: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("expected one product price audit event, got %d", auditCount)
+	}
+}
+
 func e2ELogin(t *testing.T, router http.Handler) string {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"user@mail.com","password":"admin123"}`))

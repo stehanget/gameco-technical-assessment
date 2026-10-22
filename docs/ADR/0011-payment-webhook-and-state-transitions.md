@@ -131,7 +131,7 @@ order.pending_payment → order.cancelled
 
 A paid, failed, or expired payment is terminal for this slice. Out-of-order transitions that would regress a terminal state are rejected or treated as a safe no-op according to the stable event result; they must never move `paid` back to `pending` or `failed`.
 
-The webhook transaction updates the payment, order, provider-event record, and expiry-triggered stock restoration together. It does not call an external provider, publish a notification, or create an audit event. Those remain separate follow-up slices.
+The webhook transaction updates the payment, order, provider-event record, expiry-triggered stock restoration, and the corresponding append-only order status audit event together. It does not call an external provider, publish a notification, or create an outbox event.
 
 ### HTTP error contract
 
@@ -171,7 +171,7 @@ The handler must return the shared safe error envelope and must not expose datab
 - A webhook request may wait on the provider-event or payment row lock.
 - Processed provider events are retained for the configured webhook replay window and removed by the maintenance worker; pending/unprocessed event rows are preserved.
 - Payment expiry scheduling/retry is not implemented, so cancellation/restoration currently occurs when a valid `payment.expired` webhook arrives.
-- External provider calls, retry workers, audit events, and notifications remain deferred.
+- External provider calls, notification delivery, outbox publication, and a dedicated audit read API remain deferred.
 
 ## Required verification
 

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"gameco-technical-assessment/internal/config"
+	"gameco-technical-assessment/internal/constants/permission"
 	"gameco-technical-assessment/internal/constants/ratelimit"
 	"gameco-technical-assessment/internal/constants/role"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
@@ -41,6 +42,16 @@ func RegisterRoutes(router *gin.RouterGroup, deps RouteDependencies) {
 	group.Use(middleware.RequireRoles(role.Buyer))
 	group.POST("/checkout", handler.Create)
 	group.GET("/orders/:order_public_id", handler.Detail)
+
+	sellerOrders := router.Group("/seller/orders")
+	sellerOrders.Use(middleware.Auth(deps.JWTSigner, deps.ResolveActor))
+	sellerOrders.Use(middleware.RateLimit(deps.Redis, middleware.RateLimitPolicySet{
+		Authenticated: ratelimit.GlobalAuthenticatedPolicy,
+	}, deps.JWTSigner))
+	sellerOrders.Use(middleware.RequireAPISignature(deps.APISignature, deps.Redis))
+	sellerOrders.Use(middleware.RequireRoles(role.Seller))
+	sellerOrders.Use(middleware.RequirePermissions(permission.SellerOrderRead))
+	sellerOrders.GET("", handler.SellerOrders)
 
 	public := router.Group("")
 	public.Use(middleware.RateLimit(deps.Redis, middleware.RateLimitPolicySet{

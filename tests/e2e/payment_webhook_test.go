@@ -98,4 +98,11 @@ func TestPaymentWebhookProcessesAndReplaysPaidEvent(t *testing.T) {
 	if paymentStatus != "paid" || orderStatus != "paid" {
 		t.Fatalf("unexpected final states: payment=%s order=%s", paymentStatus, orderStatus)
 	}
+	var auditCount int64
+	if err := db.Raw("SELECT COUNT(*) FROM audit_events WHERE event_type = ? AND aggregate_type = 'order' AND aggregate_id = (SELECT public_id::text FROM orders WHERE payment_reference = ?)", "order.status_changed", order.Data.PaymentReference).Scan(&auditCount).Error; err != nil {
+		t.Fatalf("count order audit events: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("expected one order status audit event, got %d", auditCount)
+	}
 }

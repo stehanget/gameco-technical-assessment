@@ -126,6 +126,89 @@ func TestCheckoutIsIdempotentAndReservesStock(t *testing.T) {
 	}
 }
 
+func TestSellerOrdersAreScopedToSellerItems(t *testing.T) {
+	router := newE2ERouter(t)
+	buyerToken := e2ERegister(t, router)
+
+	productsResponse := httptest.NewRecorder()
+	router.ServeHTTP(productsResponse, httptest.NewRequest(http.MethodGet, "/api/v1/products?per_page=1", nil))
+	if productsResponse.Code != http.StatusOK {
+		t.Fatalf("products: expected 200, got %d: %s", productsResponse.Code, productsResponse.Body.String())
+	}
+	var products struct {
+		Data []struct {
+			PublicID string `json:"public_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(productsResponse.Body.Bytes(), &products); err != nil {
+		t.Fatal(err)
+	}
+	if len(products.Data) != 1 {
+		t.Fatalf("expected one seeded product, got %s", productsResponse.Body.String())
+	}
+
+	cartRequest := httptest.NewRequest(http.MethodPut, "/api/v1/cart/items/"+products.Data[0].PublicID, bytes.NewBufferString(`{"quantity":1}`))
+	cartRequest.Header.Set("Authorization", "Bearer "+buyerToken)
+	cartRequest.Header.Set("Content-Type", "application/json")
+	cartResponse := httptest.NewRecorder()
+	router.ServeHTTP(cartResponse, cartRequest)
+	if cartResponse.Code != http.StatusOK {
+		t.Fatalf("cart: expected 200, got %d: %s", cartResponse.Code, cartResponse.Body.String())
+	}
+	checkoutRequest := httptest.NewRequest(http.MethodPost, "/api/v1/checkout", nil)
+	checkoutRequest.Header.Set("Authorization", "Bearer "+buyerToken)
+	checkoutRequest.Header.Set("Idempotency-Key", "seller-orders-e2e-key")
+	checkoutResponse := httptest.NewRecorder()
+	router.ServeHTTP(checkoutResponse, checkoutRequest)
+	if checkoutResponse.Code != http.StatusCreated {
+		t.Fatalf("checkout: expected 201, got %d: %s", checkoutResponse.Code, checkoutResponse.Body.String())
+	}
+	var checkoutPayload struct {
+		Data struct {
+			PublicID string `json:"public_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(checkoutResponse.Body.Bytes(), &checkoutPayload); err != nil {
+		t.Fatal(err)
+	}
+
+	loginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"user@mail.com","password":"admin123"}`))
+	loginRequest.Header.Set("Content-Type", "application/json")
+	loginResponse := httptest.NewRecorder()
+	router.ServeHTTP(loginResponse, loginRequest)
+	if loginResponse.Code != http.StatusOK {
+		t.Fatalf("seller login: expected 200, got %d: %s", loginResponse.Code, loginResponse.Body.String())
+	}
+	sellerToken := decodeAccessToken(t, loginResponse.Body.Bytes())
+
+	ordersRequest := httptest.NewRequest(http.MethodGet, "/api/v1/seller/orders?per_page=1", nil)
+	ordersRequest.Header.Set("Authorization", "Bearer "+sellerToken)
+	ordersResponse := httptest.NewRecorder()
+	router.ServeHTTP(ordersResponse, ordersRequest)
+	if ordersResponse.Code != http.StatusOK {
+		t.Fatalf("seller orders: expected 200, got %d: %s", ordersResponse.Code, ordersResponse.Body.String())
+	}
+	var ordersPayload struct {
+		Data []struct {
+			PublicID          string `json:"public_id"`
+			SellerTotalAmount int64  `json:"seller_total_amount"`
+			Items             []struct {
+				ProductPublicID string `json:"product_public_id"`
+			} `json:"items"`
+		} `json:"data"`
+		Meta struct {
+			HasMore    bool    `json:"has_more"`
+			NextCursor *string `json:"next_cursor"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal(ordersResponse.Body.Bytes(), &ordersPayload); err != nil {
+		t.Fatal(err)
+	}
+	if len(ordersPayload.Data) != 1 || ordersPayload.Meta.HasMore || ordersPayload.Meta.NextCursor != nil || ordersPayload.Data[0].PublicID != checkoutPayload.Data.PublicID || len(ordersPayload.Data[0].Items) != 1 || ordersPayload.Data[0].Items[0].ProductPublicID != products.Data[0].PublicID {
+		t.Fatalf("unexpected seller orders response: %s", ordersResponse.Body.String())
+	}
+}
+
 func TestCheckoutRequiresIdempotencyKey(t *testing.T) {
 	router := newE2ERouter(t)
 	token := e2ERegister(t, router)

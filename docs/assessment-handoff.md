@@ -3,8 +3,8 @@
 ## Repository status
 
 - Branch: `main`
-- Baseline commit before the current uncommitted work: `245fb3b7a7215077f9ed617c85a12f95fa1d215a`
-- Working tree: contains uncommitted implementation, generated Swagger, test, and documentation changes; it is not clean.
+- Previous pushed commit: `a9e87076feb8d459d3f9e944d56f91f06779f4ab`
+- Working tree: contains the current seller-order, anti-enumeration, audit, health, generated Swagger, and test changes; it is not clean until this slice is committed.
 - No secrets, credentials, tokens, or connection strings are included in this handoff.
 
 ## Delivered scope
@@ -16,7 +16,9 @@
 - JWT identity bound to the authoritative database session owner.
 - Actor and permission-aware authorization.
 - Seller ownership predicates on catalog mutations and reads.
-- Login failure lockout.
+- Login failure lockout plus unknown-email dummy bcrypt verification to keep the stable invalid-credentials response and reduce timing-based enumeration.
+- Append-only audit producers for failed login attempts, seller price changes, and payment-driven order status transitions. Audit writes are sanitized and use the domain transaction for product/payment mutations.
+- Liveness/readiness routes: `/livez` is process-only, `/readyz` probes PostgreSQL and Redis, and `/health` remains a backward-compatible liveness alias.
 - Redis-backed rate limiting: auth and payment webhooks use dedicated policies, while opted-in catalog, cart, and checkout/order routes share global anonymous/authenticated policies.
 - CORS restricted to the configured localhost allowlist with credentials disabled.
 - API response security headers: `nosniff`, frame denial, strict referrer policy, and disabled camera/microphone/geolocation permissions.
@@ -25,6 +27,7 @@
 
 - Public catalog listing/detail and canonical category options.
 - Seller product create, update, list, and ownership enforcement.
+- Seller order listing at `GET /api/v1/seller/orders`, scoped by `order_items.seller_id`, with seller-only item snapshots, seller subtotal, payment/order status, and bounded page pagination.
 - Buyer cart lifecycle with ownership and availability validation.
 - Checkout from the authenticated active cart.
 - `Idempotency-Key` replay and request-hash conflict handling.
@@ -92,7 +95,17 @@ docker compose --env-file .env.test \
   -f deployments/compose/docker-compose.test.yml config --quiet
 ```
 
-## Docker test commands
+The current slice has been additionally verified with:
+
+```bash
+make docker-test-e2e
+make swagger
+go test ./...
+git diff --check
+```
+
+The Docker E2E suite passes seller-order isolation, unknown-email login anti-enumeration, failed-login audit persistence, price-change audit persistence, and payment order-status audit persistence. The liveness/readiness package tests pass in `go test ./...`.
+
 
 The canonical Docker test targets are:
 
@@ -128,7 +141,7 @@ Production seed mode intentionally does not create demo users, demo passwords, d
 
 ## API and contract notes
 
-- Health endpoint: `/health`.
+- Health endpoints: `/health` is a backward-compatible liveness alias; `/livez` is process liveness; `/readyz` checks PostgreSQL and Redis and returns `503` when dependencies are unavailable.
 - Versioned API routes: `/api/v1/...`.
 - Swagger UI is available at `/swagger/index.html` when enabled by the runtime configuration.
 - Internal database identifiers are `BIGINT`; public resource identifiers are UUIDv7.

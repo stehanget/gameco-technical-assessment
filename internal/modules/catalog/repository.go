@@ -9,6 +9,7 @@ import (
 	"time"
 
 	catalogconstants "gameco-technical-assessment/internal/constants/catalog"
+	"gameco-technical-assessment/internal/platform/audit"
 	"gameco-technical-assessment/internal/platform/timestamp"
 
 	"gorm.io/gorm"
@@ -222,6 +223,28 @@ func (r *Repository) UpdateProduct(ctx context.Context, sellerID uint, publicID 
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func (r *Repository) UpdateProductWithAudit(ctx context.Context, sellerID uint, publicID string, values map[string]any, actorUserID uint) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&Product{}).
+			Where("seller_id = ? AND public_id = ? AND deleted_at IS NULL", sellerID, publicID).
+			Updates(values)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		if _, changed := values["price_amount"]; !changed {
+			return nil
+		}
+		return audit.Write(ctx, tx, audit.Event{
+			ActorUserID: &actorUserID, EventType: "product.price_changed",
+			AggregateType: "product", AggregateID: publicID,
+			Metadata: map[string]any{"price_amount": values["price_amount"]},
+		})
+	})
 }
 
 func applyListFilters(query *gorm.DB, params listParams) *gorm.DB {

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"gameco-technical-assessment/internal/config"
 	errorconst "gameco-technical-assessment/internal/constants/error"
 	"gameco-technical-assessment/internal/constants/role"
+	"gameco-technical-assessment/internal/platform/audit"
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	platformclock "gameco-technical-assessment/internal/platform/clock"
 	"gameco-technical-assessment/internal/platform/faults"
@@ -37,6 +39,18 @@ const (
 	loginLockDuration = 15 * time.Minute
 	loginLockReason   = "failed_attempts"
 )
+
+var dummyPasswordHash = func() string {
+	raw := make([]byte, 32)
+	if _, err := cryptorand.Read(raw); err != nil {
+		panic(err)
+	}
+	hash, err := platformauth.HashPassword(string(raw))
+	if err != nil {
+		panic(err)
+	}
+	return hash
+}()
 
 func NewService(repository *Repository, redisClient *redis.Client, jwtManager *platformauth.JWTManager, cfg config.AppConfig) *Service {
 	return NewServiceWithClock(repository, redisClient, jwtManager, cfg, platformclock.System{})
@@ -86,6 +100,8 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 	user, err := s.repository.FindByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			_ = platformauth.ComparePassword(dummyPasswordHash, input.Password)
+			s.recordFailedLoginAudit(ctx, input.Email, nil, "invalid_credentials")
 			return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, nil)
 		}
 		return TokenResponse{}, err
@@ -96,6 +112,7 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 		return TokenResponse{}, stateErr
 	}
 	if securityState.LockedUntil != nil && s.clock.Now().Before(*securityState.LockedUntil) {
+		s.recordFailedLoginAudit(ctx, input.Email, &user.ID, "account_locked")
 		return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, nil)
 	}
 
@@ -103,6 +120,7 @@ func (s *Service) Login(ctx context.Context, input LoginRequest, metadata Sessio
 		if recordErr := s.repository.RecordLoginFailure(ctx, user.ID, s.clock.Now(), s.clock.Now().Add(loginLockDuration)); recordErr != nil {
 			return TokenResponse{}, recordErr
 		}
+		s.recordFailedLoginAudit(ctx, input.Email, &user.ID, "invalid_credentials")
 		return TokenResponse{}, faults.New(errorconst.AuthInvalidCredentials, err)
 	}
 	if err := s.repository.ResetLoginSecurityState(ctx, user.ID); err != nil {
@@ -226,6 +244,16 @@ func (s *Service) issueTokenPair(ctx context.Context, user User, metadata Sessio
 	}
 	_ = s.redis.Set(ctx, s.refreshSessionKey(refreshHash), jti, s.config.RefreshTokenTTL).Err()
 	return TokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, TokenType: "Bearer", ExpiresIn: int64(s.config.AccessTokenTTL.Seconds()), User: mapUser(user, access)}, nil
+}
+
+func (s *Service) recordFailedLoginAudit(ctx context.Context, email string, actorUserID *uint, reason string) {
+	_ = audit.Write(ctx, s.repository.DB(), audit.Event{
+		ActorUserID:   actorUserID,
+		EventType:     "auth.login_failed",
+		AggregateType: "login_attempt",
+		AggregateID:   platformauth.HashToken(strings.ToLower(strings.TrimSpace(email))),
+		Metadata:      map[string]any{"reason": reason},
+	})
 }
 
 func (s *Service) refreshSessionKey(refreshHash string) string {

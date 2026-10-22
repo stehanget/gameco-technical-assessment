@@ -37,7 +37,7 @@ func NewRouter(container *Container) *gin.Engine {
 		router.GET("/swagger/*any", swaggerUI)
 	}
 
-	modulehealth.RegisterRoutes(router, modulehealth.NewHandler())
+	modulehealth.RegisterRoutes(router, modulehealth.NewHandler(container.DB, container.Redis))
 
 	api := router.Group("/api/v1")
 

@@ -2,9 +2,7 @@ package catalog
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +14,7 @@ import (
 	platformauth "gameco-technical-assessment/internal/platform/auth"
 	"gameco-technical-assessment/internal/platform/faults"
 	"gameco-technical-assessment/internal/platform/identifier"
+	"gameco-technical-assessment/internal/platform/pagination"
 	"gameco-technical-assessment/internal/platform/timestamp"
 
 	"github.com/google/uuid"
@@ -261,7 +260,7 @@ func (s *Service) UpdateProduct(ctx context.Context, actor platformauth.Actor, p
 	if name == "" || description == "" || priceAmount < 0 || stockQuantity < 0 {
 		return SellerProductResponse{}, faults.New(errorconst.InvalidRequest, nil)
 	}
-	if err := s.repository.UpdateProduct(ctx, sellerID, parsed.String(), values); err != nil {
+	if err := s.repository.UpdateProductWithAudit(ctx, sellerID, parsed.String(), values, actor.UserID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return SellerProductResponse{}, faults.New(errorconst.CatalogProductNotFound, err)
 		}
@@ -333,9 +332,14 @@ func filterFingerprint(params listParams) string {
 	if params.MaxPrice != nil {
 		maxPrice = strconv.FormatInt(*params.MaxPrice, 10)
 	}
-	value := strings.Join([]string{params.Query, params.Category, minPrice, maxPrice, params.SortBy, params.SortOrder}, "\x00")
-	digest := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(digest[:])
+	return pagination.FilterFingerprint(map[string]string{
+		"q":          params.Query,
+		"category":   params.Category,
+		"min_price":  minPrice,
+		"max_price":  maxPrice,
+		"sort_by":    params.SortBy,
+		"sort_order": params.SortOrder,
+	})
 }
 
 func encodeCursor(cursor cursorPosition) (string, error) {
@@ -357,6 +361,9 @@ func decodeCursor(value string) (cursorPosition, error) {
 	}
 	if cursor.Version != 1 || cursor.SortBy == "" || cursor.SortOrder == "" || cursor.Filter == "" || cursor.Value == "" || cursor.Tie == "" {
 		return cursorPosition{}, errors.New("invalid cursor payload")
+	}
+	if _, err := uuid.Parse(cursor.Tie); err != nil {
+		return cursorPosition{}, err
 	}
 	return cursor, nil
 }

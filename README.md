@@ -189,16 +189,23 @@ make install-hooks
 - `POST /api/v1/seller/products`
 - `PATCH /api/v1/seller/products/:product_public_id`
 
-### Cart, checkout, and orders
+### Cart, checkout, seller orders, and payments
 - `GET /api/v1/cart`
 - `PUT /api/v1/cart/items/:product_public_id`
 - `DELETE /api/v1/cart/items/:product_public_id`
 - `POST /api/v1/checkout`
 - `GET /api/v1/orders/:order_public_id`
+- `GET /api/v1/seller/orders`
 - `POST /api/v1/webhooks/payment`
 
 ### Health
-- `GET /health`
+- `GET /health` — backward-compatible liveness alias
+- `GET /livez` — process liveness only; does not probe dependencies
+- `GET /readyz` — PostgreSQL and Redis readiness probe; returns `503` while dependencies are unavailable
+
+### Security and audit
+- Login for an unknown email performs dummy bcrypt verification and returns the same stable error contract as a known email with a wrong password.
+- Failed login attempts, seller price changes, and payment-driven order status changes are written to append-only `audit_events` records without raw credentials or passwords.
 
 The `internal/modules/example` package remains as reference scaffolding, but it is not registered in the application router.
 

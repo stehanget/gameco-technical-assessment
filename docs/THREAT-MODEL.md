@@ -65,7 +65,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigation required:** Every marketplace read and mutation must scope the query by the authenticated actor and resource ownership, not by identifier alone. Seller product writes must include seller ownership in the database query. Buyer order reads must include buyer ownership. Public catalog reads must exclude soft-deleted products.
 
-**Current status:** Public catalog reads, seller product handlers, the authenticated buyer checkout flow, and `GET /api/v1/orders/{order_public_id}` are implemented with actor-scoped checks. Order detail queries scope by both public order identifier and authenticated buyer ID; foreign-owner and malformed-identifier cases are covered by E2E and PostgreSQL integration tests. Order listing and broader order ownership projections remain future scope.
+**Current status:** Public catalog reads, seller product handlers, seller order listing, the authenticated buyer checkout flow, and `GET /api/v1/orders/{order_public_id}` are implemented with actor-scoped checks. Seller order listing predicates on `order_items.seller_id` and returns only seller-owned item snapshots plus seller subtotal; foreign seller items and full buyer totals are not exposed. Order detail queries scope by both public order identifier and authenticated buyer ID; foreign-owner and malformed-identifier cases are covered by E2E and PostgreSQL integration tests.
 
 ### API2:2023 Broken Authentication
 
@@ -73,7 +73,7 @@ The repository currently has implemented authentication, database-backed session
 
 **Mitigations:** bcrypt password hashing, strict `HS256` verification, 15-minute access tokens, database-backed active-session lookup, short-lived session caching with revoke markers, atomic refresh rotation, refresh hash persistence, reuse detection, 24-hour refresh tokens, and server-side logout.
 
-**Gaps/residual risk:** Login failure lockout state (`user_login_security_states`) is wired into the login service with a five-attempt, bounded lockout and reset-after-success behavior. MFA, manual unlock/audit workflow, and device/session management are not implemented. JWT rotation supports a current secret plus a bounded previous-secret list; secure secret-manager storage and rotation orchestration remain deployment responsibilities.
+**Gaps/residual risk:** Login failure lockout state (`user_login_security_states`) is wired into the login service with a five-attempt, bounded lockout and reset-after-success behavior. Unknown-email attempts perform dummy bcrypt comparison and emit sanitized failed-login audit events. MFA, manual unlock workflow, and device/session management are not implemented. JWT rotation supports a current secret plus a bounded previous-secret list; secure secret-manager storage and rotation orchestration remain deployment responsibilities.
 
 ### API3:2023 Broken Object Property Level Authorization
 
@@ -154,7 +154,7 @@ The repository currently has implemented authentication, database-backed session
 - **Attack:** Seller A submits Seller B's product public ID to the update endpoint.
 - **Impact:** Unauthorized price, stock, or catalog mutation.
 - **Mitigation:** Update query must constrain both `product.public_id` and `product.seller_id = authenticated_user_id`; protected fields must come from explicit DTOs.
-- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Order listing and broader order ownership projections remain future scope.
+- **Residual risk:** Seller product ownership is mitigated by seller-scoped queries and route/service regression coverage. Seller order listing is likewise seller-item scoped and covered by E2E. A dedicated audit read API and broader administrative order projections remain future scope.
 
 ### 2. Two checkout requests consume the last stock
 

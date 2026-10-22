@@ -498,6 +498,84 @@ definitions:
     - meta
     - success
     type: object
+  checkout.SellerOrderItemResponse:
+    properties:
+      product_name:
+        type: string
+      product_public_id:
+        type: string
+      quantity:
+        type: integer
+      subtotal_amount:
+        type: integer
+      unit_price_amount:
+        type: integer
+    required:
+    - product_name
+    - product_public_id
+    - quantity
+    - subtotal_amount
+    - unit_price_amount
+    type: object
+  checkout.SellerOrderListMeta:
+    properties:
+      has_more:
+        type: boolean
+      next_cursor:
+        type: string
+        x-nullable: true
+      per_page:
+        type: integer
+      request_id:
+        type: string
+        x-nullable: true
+    required:
+    - has_more
+    - next_cursor
+    - per_page
+    - request_id
+    type: object
+  checkout.SellerOrderListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/checkout.SellerOrderResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/checkout.SellerOrderListMeta'
+      success:
+        type: boolean
+    required:
+    - data
+    - meta
+    - success
+    type: object
+  checkout.SellerOrderResponse:
+    properties:
+      created_at:
+        example: "2026-10-21T10:15:30Z"
+        format: date-time
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/checkout.SellerOrderItemResponse'
+        type: array
+      payment_status:
+        type: string
+      public_id:
+        type: string
+      seller_total_amount:
+        type: integer
+      status:
+        type: string
+    required:
+    - created_at
+    - items
+    - payment_status
+    - public_id
+    - seller_total_amount
+    - status
+    type: object
   example.CreateRequest:
     properties:
       name:
@@ -1348,6 +1426,94 @@ paths:
       summary: Get public product
       tags:
       - products
+  /api/v1/seller/orders:
+    get:
+      description: Lists orders containing items owned by the authenticated seller.
+        Only the seller's item snapshots and seller subtotal are returned.
+      parameters:
+      - description: Trusted integration key ID
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Unix timestamp in seconds
+        in: header
+        name: X-API-Timestamp
+        type: string
+      - description: Unique request nonce
+        in: header
+        name: X-API-Nonce
+        type: string
+      - description: Versioned HMAC signature, for example v1=<hex>
+        in: header
+        name: X-API-Signature
+        type: string
+      - description: Search order public ID or seller product name
+        in: query
+        name: q
+        type: string
+      - description: Order status filter
+        in: query
+        name: status
+        type: string
+      - description: Payment status filter
+        in: query
+        name: payment_status
+        type: string
+      - default: created_at
+        description: Sort field
+        enum:
+        - created_at
+        - seller_total
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Opaque cursor returned by the previous response
+        in: query
+        name: cursor
+        type: string
+      - default: 20
+        description: Number of records per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/checkout.SellerOrderListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List seller orders
+      tags:
+      - seller-orders
   /api/v1/seller/products:
     get:
       description: Lists non-deleted products owned by the authenticated seller
@@ -1659,7 +1825,7 @@ paths:
       - payment-webhooks
   /health:
     get:
-      description: Returns liveness status
+      description: Backward-compatible alias for the liveness endpoint.
       produces:
       - application/json
       responses:
@@ -1668,6 +1834,37 @@ paths:
           schema:
             $ref: '#/definitions/health.StatusResponse'
       summary: Health check
+      tags:
+      - health
+  /livez:
+    get:
+      description: Returns 200 when the API process is alive. It does not probe dependencies.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.StatusResponse'
+      summary: Liveness check
+      tags:
+      - health
+  /readyz:
+    get:
+      description: Probes PostgreSQL and Redis. Returns 503 while either dependency
+        is unavailable.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.StatusResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/health.StatusResponse'
+      summary: Readiness check
       tags:
       - health
 schemes:
